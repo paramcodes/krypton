@@ -33,11 +33,11 @@ first matching named port, or to `default` when no case matches.
 
 ### Phase 2: Engine integration
 
-- [ ] Task 2: Add a fake-port engine expect test for named-port routing.
+- [x] Task 2: Add a fake-port engine expect test for named-port routing.
 
 ### Checkpoint: Integration
 
-- [ ] The inline trace snapshot demonstrates only the selected downstream path
+- [x] The inline trace snapshot demonstrates only the selected downstream path
   executes and output items retain their values.
 
 ### Phase 3: Decision and docs

@@ -27,8 +27,8 @@ non-empty cases, unique case values, and output port names.
 connected routes; snapshot the readable trace inline.
 
 **Acceptance criteria:**
-- [ ] Only the selected downstream node executes.
-- [ ] The input item is preserved and the trace records the chosen route.
+- [x] Only the selected downstream node executes.
+- [x] The input item is preserved and the trace records the chosen route.
 
 **Verification:** `bunx vitest run packages/nodes-core/src/switch.test.ts`.
 
