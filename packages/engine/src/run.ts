@@ -71,11 +71,7 @@ const readNodeTimeout = (node: NodeInstance): number | string | undefined => {
   if (timeoutMs === undefined) {
     return undefined;
   }
-  if (
-    !Number.isSafeInteger(timeoutMs) ||
-    timeoutMs < 1 ||
-    timeoutMs > MAX_NODE_TIMEOUT_MS
-  ) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_NODE_TIMEOUT_MS) {
     return `timeoutMs must be an integer between 1 and ${MAX_NODE_TIMEOUT_MS}.`;
   }
   return timeoutMs;
