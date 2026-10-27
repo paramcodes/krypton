@@ -3,7 +3,8 @@ import { isJsonObject, isRecord, type JsonObject, type NodeId } from "@krypton/s
 import type { EnginePorts } from "./ports.ts";
 
 /**
- * Context for one node execution. Executors must treat the item, parameters,
+ * Context for one node execution. Parameters have already had their whole-field
+ * expressions resolved for this item. Executors must treat the item, parameters,
  * and ports as immutable, and should return new objects instead of mutating
  * their input. The engine may reuse the input object for several start nodes.
  */

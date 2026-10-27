@@ -22,31 +22,61 @@ Build a small expression language for field values. Do not use `eval`,
 
 The first version is deliberately narrow:
 
-- An expression is a whole field value of the form `{{ expression }}`. Mixed
+- An expression is a whole field value of the form `{{ expression }}`. A field
+  is active when its trimmed value starts with `{{` and ends with `}}`; mixed
   literal text and interpolation are deferred until the parser and escaping
-  rules are proven.
-- References are limited to the current item (`$json`), workflow input
-  (`$input`), a named node output (`$node.<id>.json`), and run metadata
-  (`$run.id`). Secrets are not addressable from expressions.
+  rules are proven. A literal that accidentally looks like a whole-field
+  expression is returned with `{{ '{{text}}' }}`.
+- References are limited to the current item (`$json`) and workflow input
+  (`$input`). A named node output (`$node.<id>.json`) and run metadata
+  (`$run.id`) need node-output history and run identity; those references are
+  deferred until the engine has that state. Secrets are never addressable from
+  expressions.
 - The grammar supports literals, field access, comparisons, boolean logic,
   arithmetic, and parentheses. Equality is strict.
 - There are no user-defined functions, loops, I/O, time, randomness, or prototype
   access in the first version. A small allowlist of pure functions can be added
   as a versioned grammar change.
-- The parser validates syntax and references before a run. Evaluation is bounded
-  by expression length and depth and returns a typed error with a source
-  location and a plain-language message.
-- Property access reads own properties only. Unknown references, unknown
-  functions, and type errors fail with a useful message rather than falling back
-  to JavaScript coercion.
-- When the expression parser lands, the workflow JSON will record an expression
-  version so a later grammar can keep old workflows readable. The current
-  execution slice has no expression evaluator and therefore no version field
-  yet.
+- The parser validates syntax and known roots before a run. Missing fields and
+  type errors are data-dependent and fail at the node during evaluation.
+  Evaluation is bounded by expression length and depth and returns a typed error
+  with a source location and a plain-language message.
+- Property access reads own properties only. Unknown references and type errors
+  fail with a useful message rather than falling back to JavaScript coercion.
+- Workflow JSON records `expressionVersion`. A missing field defaults to `1` for
+  compatibility with early Stage 1 files, which means a legacy whole-field-
+  looking string is evaluated unless it is escaped as an expression. The engine
+  accepts version `1` only and fails visibly for any other version.
 
-The Stage 1 execution slice does not evaluate expressions yet. It establishes
-the workflow shape, node contract, and deterministic runner that the expression
-parser plugs into next.
+Version 1 uses these concrete rules:
+
+- Literals are JSON `null`, booleans, decimal numbers without an exponent, and
+  single- or double-quoted strings with a small escape set.
+- Dot access and literal bracket access are supported:
+  `$json.customer.email`, `$json["customer"].email`, and `$json.tags[0]`.
+  Brackets do not accept arbitrary expressions.
+- Operators, from lowest to highest precedence, are `||`, `&&`, equality
+  (`==`, `===`, `!=`, `!==`), comparison (`<`, `<=`, `>`, `>=`), additive
+  (`+`, `-`), multiplicative (`*`, `/`, `%`), unary (`!`, `-`), member access,
+  and parentheses. `==` and `===` both use strict equality; there is no loose
+  equality operator. Primitives compare by value, while objects and arrays
+  compare by reference in version 1.
+- Arithmetic is numbers only. Boolean operators require booleans. Relational
+  comparisons require two numbers or two strings. These rules avoid silent
+  JavaScript coercion.
+- The parser rejects an expression longer than 1,000 characters, more than 256
+  AST nodes, or nesting deeper than 32 levels. Parameter trees are independently
+  bounded to 64 levels so the engine cannot recurse without limit on a tree that
+  bypassed the schema boundary.
+- All node parameters are compiled before any node executes. A syntax error or
+  unknown root fails the run before the first step. Missing fields and type
+  errors fail the node during evaluation. Parameters are then evaluated per item
+  before the node executor is called, so executors receive resolved JSON and
+  never parse expressions themselves.
+
+The Stage 1 runner now evaluates expressions. Node executors still receive a
+plain `JsonObject` for `parameters`; the expression layer stays inside the pure
+engine.
 
 ## Alternatives considered
 

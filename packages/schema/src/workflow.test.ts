@@ -74,9 +74,40 @@ describe("workflow parsing", () => {
     });
 
     expect(workflow.id).toBe("triage");
+    expect(workflow.expressionVersion).toBe(1);
     expect(workflow.nodes[0]?.id).toBe("start");
     expect(workflow.nodes[1]?.parameters).toEqual({ values: { status: "ready" } });
     expect(workflow.connections[0]).toEqual({ from: "start", to: "enrich" });
+  });
+
+  it("accepts an explicit expression version and defaults it to 1", () => {
+    const defaulted = parseWorkflow({
+      id: "defaulted",
+      name: "Defaulted",
+      nodes: [{ id: "start", type: "manual-trigger" }],
+    });
+    const explicit = parseWorkflow({
+      id: "explicit",
+      name: "Explicit",
+      expressionVersion: 1,
+      nodes: [{ id: "start", type: "manual-trigger" }],
+    });
+
+    expect(defaulted.expressionVersion).toBe(1);
+    expect(explicit.expressionVersion).toBe(1);
+  });
+
+  it("rejects an invalid expression version", () => {
+    for (const expressionVersion of [0, -1, 1.5, "1", null]) {
+      expect(() =>
+        parseWorkflow({
+          id: "bad-version",
+          name: "Bad version",
+          expressionVersion,
+          nodes: [{ id: "start", type: "manual-trigger" }],
+        }),
+      ).toThrow(/expressionVersion/);
+    }
   });
 
   it("defaults missing parameters and connections", () => {

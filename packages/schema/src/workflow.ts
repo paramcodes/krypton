@@ -17,6 +17,7 @@ export type Connection = {
 export type Workflow = {
   readonly id: WorkflowId;
   readonly name: string;
+  readonly expressionVersion: number;
   readonly nodes: readonly NodeInstance[];
   readonly connections: readonly Connection[];
 };
@@ -59,6 +60,18 @@ const readString = (
   }
   if (hasControlCharacter(value)) {
     throw new SchemaError(`${path}.${key}`, "Expected a string without control characters.");
+  }
+  return value;
+};
+
+const readPositiveInteger = (
+  record: Readonly<Record<string, unknown>>,
+  key: string,
+  path: string,
+): number => {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
+    throw new SchemaError(`${path}.${key}`, "Expected a positive integer.");
   }
   return value;
 };
@@ -120,6 +133,10 @@ export const parseWorkflow = (value: unknown): Workflow => {
   const record = readObject(value, "$");
   const id = readString(record, "id", "$");
   const name = readString(record, "name", "$");
+  const expressionVersion =
+    record["expressionVersion"] === undefined
+      ? 1
+      : readPositiveInteger(record, "expressionVersion", "$");
   const nodeValues = readArray(record["nodes"], "$.nodes");
 
   if (nodeValues.length === 0) {
@@ -154,6 +171,7 @@ export const parseWorkflow = (value: unknown): Workflow => {
   return {
     id: asWorkflowId(id),
     name,
+    expressionVersion,
     nodes,
     connections,
   };

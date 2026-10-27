@@ -1,6 +1,7 @@
 {
   "id": "triage-demo",
   "name": "Triage demo",
+  "expressionVersion": 1,
   "nodes": [
     { "id": "start", "type": "manual-trigger" },
     {
@@ -8,7 +9,11 @@
       "type": "set",
       "parameters": { "values": { "status": "ready" } }
     },
-    { "id": "decide", "type": "if", "parameters": { "condition": true } },
+    {
+      "id": "decide",
+      "type": "if",
+      "parameters": { "condition": "{{ $json.plan == 'trial' }}" }
+    },
     {
       "id": "approve",
       "type": "set",

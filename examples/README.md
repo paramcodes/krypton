@@ -8,4 +8,6 @@ bun run cli -- run examples/triage.workflow.json --input examples/triage.input.j
 
 The workflow starts with a Manual Trigger, adds a field with Set, chooses a
 branch with IF, and prints the items that reach the selected terminal node. The
-`decline` branch is present but does not execute while `condition` is `true`.
+IF condition is the whole-field expression `{{ $json.plan == 'trial' }}`, which
+evaluates to `true` for the example input. The `decline` branch is present but
+does not execute. The workflow records `expressionVersion: 1`.
