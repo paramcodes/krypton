@@ -3,7 +3,8 @@
   "compilerOptions": {
     "paths": {
       "@krypton/schema": ["./packages/schema/src/index.ts"],
-      "@krypton/engine": ["./packages/engine/src/index.ts"]
+      "@krypton/engine": ["./packages/engine/src/index.ts"],
+      "@krypton/nodes-core": ["./packages/nodes-core/src/index.ts"]
     }
   },
   "include": [

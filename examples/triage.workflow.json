@@ -1,0 +1,29 @@
+{
+  "id": "triage-demo",
+  "name": "Triage demo",
+  "nodes": [
+    { "id": "start", "type": "manual-trigger" },
+    {
+      "id": "enrich",
+      "type": "set",
+      "parameters": { "values": { "status": "ready" } }
+    },
+    { "id": "decide", "type": "if", "parameters": { "condition": true } },
+    {
+      "id": "approve",
+      "type": "set",
+      "parameters": { "values": { "route": "approve" } }
+    },
+    {
+      "id": "decline",
+      "type": "set",
+      "parameters": { "values": { "route": "decline" } }
+    }
+  ],
+  "connections": [
+    { "from": "start", "to": "enrich" },
+    { "from": "enrich", "to": "decide" },
+    { "from": "decide", "fromPort": "true", "to": "approve" },
+    { "from": "decide", "fromPort": "false", "to": "decline" }
+  ]
+}

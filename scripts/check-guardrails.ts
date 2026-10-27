@@ -173,6 +173,7 @@ const WORKSPACE_BOUNDARIES: Readonly<Record<string, readonly string[]>> = {
     "@krypton/node-sdk",
     "@krypton/nodes-core",
   ],
+  "@krypton/cli": ["@krypton/schema", "@krypton/engine", "@krypton/nodes-core"],
   "@krypton/web": ["@krypton/schema", "@krypton/node-sdk"],
   "@krypton/docs": [],
 };
