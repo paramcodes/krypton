@@ -1,0 +1,11 @@
+# Examples
+
+Run the Stage 1 triage workflow in the terminal:
+
+```sh
+bun run cli -- run examples/triage.workflow.json --input examples/triage.input.json
+```
+
+The workflow starts with a Manual Trigger, adds a field with Set, chooses a
+branch with IF, and prints the items that reach the selected terminal node. The
+`decline` branch is present but does not execute while `condition` is `true`.

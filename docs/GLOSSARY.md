@@ -12,6 +12,9 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Item             | One JSON object flowing through the graph.                                                                      |
 | Trigger          | A node that starts a run, such as a manual click, schedule, or webhook.                                         |
 | Run              | One attempt to execute a workflow. Also called an execution.                                                    |
+| Trace            | The readable record of a run returned by the engine; not yet the durable journal.                               |
+| Start node       | A node with no incoming connection, where a run begins.                                                         |
+| Step budget      | The maximum number of node executions a run may perform before it fails visibly.                                |
 | Journal          | The append-only record of run events used for replay, debugging, and recovery.                                  |
 | Port             | An interface the engine depends on for an external effect, such as time, randomness, HTTP, storage, or secrets. |
 | Simulation       | A deterministic test run that uses fake ports instead of real time, network, or storage.                        |

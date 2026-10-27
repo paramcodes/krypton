@@ -1,0 +1,197 @@
+import { describe, expect, it } from "vitest";
+
+import { SchemaError } from "./errors";
+import { parseJsonObject, parseJsonValue } from "./json";
+import { parseWorkflow } from "./workflow";
+
+describe("JSON boundary", () => {
+  it("parses nested JSON objects and arrays", () => {
+    const parsed = parseJsonObject({
+      name: "Ada",
+      tags: ["trial", "web"],
+      profile: { active: true, score: 3 },
+      missing: null,
+    });
+
+    expect(parsed).toEqual({
+      name: "Ada",
+      tags: ["trial", "web"],
+      profile: { active: true, score: 3 },
+      missing: null,
+    });
+  });
+
+  it("rejects values that cannot survive a JSON round trip", () => {
+    expect(() => parseJsonValue(undefined)).toThrow(SchemaError);
+    expect(() => parseJsonValue(Number.NaN)).toThrow(/finite JSON number/);
+    expect(() => parseJsonValue(() => "nope")).toThrow(/JSON value/);
+    expect(() => parseJsonValue(new Date())).toThrow(/JSON value/);
+  });
+
+  it("keeps a __proto__ key as data instead of polluting the prototype", () => {
+    const value: unknown = JSON.parse('{"__proto__":{"polluted":true},"safe":"yes"}');
+    const parsed = parseJsonObject(value);
+
+    expect(Object.getPrototypeOf(parsed)).toBe(Object.prototype);
+    expect(Object.hasOwn(parsed, "__proto__")).toBe(true);
+    expect("polluted" in Object.prototype).toBe(false);
+  });
+
+  it("rejects a non-object at the object boundary", () => {
+    expect(() => parseJsonObject(["not", "an", "object"])).toThrow(/JSON object/);
+  });
+
+  it("rejects JSON nested beyond the depth budget", () => {
+    let value: unknown = "leaf";
+    for (let depth = 0; depth <= 65; depth += 1) {
+      value = { next: value };
+    }
+
+    expect(() => parseJsonValue(value)).toThrow(/no deeper than/);
+  });
+
+  it("rejects symbol keys instead of silently dropping them", () => {
+    const value: unknown = { [Symbol("hidden")]: true };
+
+    expect(() => parseJsonValue(value)).toThrow(/keys must be strings/);
+  });
+});
+
+describe("workflow parsing", () => {
+  it("parses a workflow and brands its identifiers", () => {
+    const workflow = parseWorkflow({
+      id: "triage",
+      name: "Triage",
+      nodes: [
+        { id: "start", type: "manual-trigger" },
+        {
+          id: "enrich",
+          type: "set",
+          parameters: { values: { status: "ready" } },
+        },
+      ],
+      connections: [{ from: "start", to: "enrich" }],
+    });
+
+    expect(workflow.id).toBe("triage");
+    expect(workflow.nodes[0]?.id).toBe("start");
+    expect(workflow.nodes[1]?.parameters).toEqual({ values: { status: "ready" } });
+    expect(workflow.connections[0]).toEqual({ from: "start", to: "enrich" });
+  });
+
+  it("defaults missing parameters and connections", () => {
+    const workflow = parseWorkflow({
+      id: "solo",
+      name: "Solo",
+      nodes: [{ id: "start", type: "manual-trigger" }],
+    });
+
+    expect(workflow.nodes[0]?.parameters).toEqual({});
+    expect(workflow.connections).toEqual([]);
+  });
+
+  it("rejects duplicate node identifiers", () => {
+    expect(() =>
+      parseWorkflow({
+        id: "duplicate",
+        name: "Duplicate",
+        nodes: [
+          { id: "start", type: "manual-trigger" },
+          { id: "start", type: "set" },
+        ],
+      }),
+    ).toThrow(/Duplicate node id/);
+  });
+
+  it("rejects connections to unknown nodes", () => {
+    expect(() =>
+      parseWorkflow({
+        id: "broken",
+        name: "Broken",
+        nodes: [{ id: "start", type: "manual-trigger" }],
+        connections: [{ from: "start", to: "missing" }],
+      }),
+    ).toThrow(/Unknown node "missing"/);
+  });
+
+  it("rejects parameters that are not JSON", () => {
+    expect(() =>
+      parseWorkflow({
+        id: "broken",
+        name: "Broken",
+        nodes: [
+          {
+            id: "start",
+            type: "set",
+            parameters: { value: undefined },
+          },
+        ],
+      }),
+    ).toThrow(SchemaError);
+  });
+
+  it("rejects control characters in identifiers", () => {
+    expect(() =>
+      parseWorkflow({
+        id: "bad",
+        name: "Bad",
+        nodes: [{ id: "start\u0000", type: "manual-trigger" }],
+      }),
+    ).toThrow(/control characters/);
+  });
+
+  it("rejects a sparse node array as invalid input", () => {
+    const nodes: unknown[] = [];
+    nodes[1] = { id: "start", type: "manual-trigger" };
+
+    expect(() =>
+      parseWorkflow({
+        id: "sparse",
+        name: "Sparse",
+        nodes,
+      }),
+    ).toThrow(SchemaError);
+  });
+
+  it("bounds the number of nodes", () => {
+    const nodes = Array.from({ length: 1_001 }, (_, index) => ({
+      id: `node-${index}`,
+      type: "set",
+    }));
+
+    expect(() =>
+      parseWorkflow({
+        id: "too-many",
+        name: "Too many",
+        nodes,
+      }),
+    ).toThrow(/at most 1000 nodes/);
+  });
+
+  it("bounds the number of connections", () => {
+    const connections = Array.from({ length: 5_001 }, () => ({
+      from: "start",
+      to: "start",
+    }));
+
+    expect(() =>
+      parseWorkflow({
+        id: "too-many",
+        name: "Too many",
+        nodes: [{ id: "start", type: "manual-trigger" }],
+        connections,
+      }),
+    ).toThrow(/at most 5000 connections/);
+  });
+
+  it("rejects an empty source port", () => {
+    expect(() =>
+      parseWorkflow({
+        id: "bad-port",
+        name: "Bad port",
+        nodes: [{ id: "start", type: "manual-trigger" }],
+        connections: [{ from: "start", to: "start", fromPort: "" }],
+      }),
+    ).toThrow(/non-empty string/);
+  });
+});

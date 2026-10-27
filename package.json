@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "check": "bun run guardrails && bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "cli": "node apps/cli/src/main.ts",
     "e2e": "playwright test",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",

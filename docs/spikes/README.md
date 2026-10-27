@@ -8,7 +8,7 @@ if the answer is "not yet." A spike that does not end in a decision is unfinishe
 | Docs site generator    | resolved | Starlight; [ADR 0009](../adr/0009-docs-site.md)                                                |
 | Oxlint boundary plugin | resolved | Built-in `no-restricted-imports` with custom messages; [ADR 0003](../adr/0003-quality-gate.md) |
 | API framework          | open     | Hono candidate, Fastify fallback; [ADR 0010](../adr/0010-api-framework.md)                     |
-| Expression language    | open     | Small safe language before sandboxed JS; [ADR 0011](../adr/0011-expression-language.md)        |
+| Expression language    | resolved | Small safe language before sandboxed JS; [ADR 0011](../adr/0011-expression-language.md)        |
 | Code node sandbox      | open     | Isolated runtime, never the API process; [ADR 0012](../adr/0012-code-sandbox.md)               |
 
 ## Resolved notes

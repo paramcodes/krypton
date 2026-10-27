@@ -471,6 +471,44 @@
       }
     },
     {
+      "files": ["apps/cli/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@krypton/api",
+                "message": "CLI must not import the API. It composes schema, engine, and nodes-core directly."
+              },
+              {
+                "name": "@krypton/worker",
+                "message": "CLI must not import the worker. It composes schema, engine, and nodes-core directly."
+              },
+              {
+                "name": "@krypton/web",
+                "message": "CLI must not import the editor. Use the terminal runner or the API."
+              },
+              {
+                "name": "react",
+                "message": "CLI is a terminal app. The UI lives in apps/web."
+              },
+              {
+                "name": "react-dom",
+                "message": "CLI is a terminal app. The UI lives in apps/web."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["**/apps/**"],
+                "message": "CLI must not reach into another app by relative path. Use package boundaries."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["apps/web/src/**/*.ts", "apps/web/src/**/*.tsx"],
       "rules": {
         "no-restricted-imports": [

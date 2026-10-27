@@ -12,8 +12,10 @@ each step builds on the previous one.
    — why the foundation looks like this.
 5. [`packages/engine/src/trace.test.ts`](../../packages/engine/src/trace.test.ts) —
    the smallest example of an expect test.
-6. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the engine
-   will be tested once it exists.
+6. [`packages/nodes-core/src/triage.test.ts`](../../packages/nodes-core/src/triage.test.ts)
+   — a full expect test with the real nodes, an item queue, and branch ports.
+7. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
+   engine is tested.
 
 ## Exercises
 
@@ -25,5 +27,5 @@ each step builds on the previous one.
 ## What comes next
 
 Stage 1 adds the pure engine, a deterministic simulation, the first nodes, and a
-readable execution trace. The Stage 1 teach-back will use a real trace instead of
-the formatter example.
+readable execution trace. The first slice is in place: the CLI and
+[`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts) show a real run.

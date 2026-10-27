@@ -16,7 +16,12 @@ const isBidiControl = (code: number): boolean =>
   code === 0x200f ||
   code === 0x061c;
 
-const escapeCell = (value: string): string => {
+/**
+ * Escape text for a single terminal line. Control characters, line breaks, and
+ * bidirectional overrides are made visible so untrusted values cannot inject
+ * terminal commands or forge extra output lines.
+ */
+export const escapeTerminalText = (value: string): string => {
   let escaped = "";
 
   for (const character of value) {
@@ -58,12 +63,12 @@ const escapeCell = (value: string): string => {
 /**
  * Render an execution trace as one aligned line per event.
  * Cell text is escaped so untrusted details cannot forge extra lines or inject
- * terminal control sequences. Stage 1 will feed this from the simulated engine.
+ * terminal control sequences. The Stage 1 engine feeds this from a simulation.
  */
 export const formatTrace = (lines: readonly TraceLine[]): string =>
   lines
     .map((line) => {
       const time = `t=${line.atMs}ms`;
-      return `${pad(time, 9)} ${pad(escapeCell(line.node), 12)} ${pad(line.status, 5)} ${escapeCell(line.detail)}`.trimEnd();
+      return `${pad(time, 9)} ${pad(escapeTerminalText(line.node), 12)} ${pad(line.status, 5)} ${escapeTerminalText(line.detail)}`.trimEnd();
     })
     .join("\n");

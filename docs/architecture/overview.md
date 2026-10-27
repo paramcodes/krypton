@@ -1,8 +1,9 @@
 # Architecture overview
 
-Status: Stage 0. The engine, API, editor, and worker are not implemented yet.
-This document describes the target shape and the boundaries those stages must
-respect. The full proposal is in
+Status: Stage 1 in progress. The pure engine, first built-in nodes, and a
+terminal runner are being built. The API, editor, and worker are not implemented
+yet. This document describes the target shape and the boundaries those stages
+must respect. The full proposal is in
 [`research/02-architecture.md`](../../research/02-architecture.md).
 
 ## Goals
@@ -36,6 +37,7 @@ Worker ──► Engine (pure) ──► Node SDK / built-in nodes
 | `packages/nodes-core` | Built-in nodes                                  | Schema, engine types, node SDK              | DB; HTTP framework; UI            |
 | `apps/api`            | HTTP API, auth, persistence, SSE                | All packages                                | `apps/web`                        |
 | `apps/worker`         | Durable run execution                           | Engine, nodes, node SDK, schema             | `apps/web`                        |
+| `apps/cli`            | Terminal workflow runner (Stage 1)              | Schema, engine, nodes-core                  | API; worker; web; DB; UI          |
 | `apps/web`            | React editor                                    | Schema and node SDK types                   | Engine; DB; server framework      |
 | `apps/docs`           | Documentation site                              | Docs content                                | Product runtime code              |
 
@@ -64,17 +66,19 @@ imports. See [`CONSTRAINTS.md`](../../CONSTRAINTS.md).
 
 The engine is a pure library. It receives the outside world through narrow ports:
 
-- `Clock` — `now()` and `sleep(ms, signal)` for deterministic time.
+- `Clock` — `now()` in Stage 1; `sleep(ms, signal)` arrives with the first
+  timeout or retry that needs simulated time.
 - `Random` — seeded randomness and IDs.
 - `Http` — outbound requests with timeouts, size limits, and SSRF policy.
 - `RunStore` — claim, checkpoint, and journal persistence.
 - `Secrets` — resolve credentials without putting plaintext in the journal.
 
-The engine returns trace and journal events rather than logging directly; the
-worker owns structured logging and redaction. Tests use a simulation with fake
-ports. The engine never reads `process.env`, calls `fetch`, uses `Date.now`,
-touches the database, or opens its own network, timer, crypto, or console
-handles.
+Stage 1 currently implements only `Clock`; the other ports arrive with their
+first consumer. The engine returns a trace (and, later, journal events) rather
+than logging directly; the worker owns structured logging and redaction. Tests
+use a simulation with fake ports. The engine never reads `process.env`, calls
+`fetch`, uses `Date.now`, touches the database, or opens its own network, timer,
+crypto, or console handles.
 
 ## Data model summary
 
@@ -118,5 +122,8 @@ The detailed exit criteria are in
 ## Open decisions
 
 - API framework: [`docs/adr/0010-api-framework.md`](../adr/0010-api-framework.md).
-- Expression language: [`docs/adr/0011-expression-language.md`](../adr/0011-expression-language.md).
 - Code sandbox: [`docs/adr/0012-code-sandbox.md`](../adr/0012-code-sandbox.md).
+
+The expression language and Stage 1 execution model are accepted in
+[ADR 0011](../adr/0011-expression-language.md) and
+[ADR 0013](../adr/0013-engine-execution-model.md).
