@@ -7,6 +7,8 @@
 > [ADR 0014](0014-http-request-and-retries.md) adds the `Http` port, bounded
 > retries, and HTTP request timeouts. The queue model and the deferral of joins,
 > loops, and error routes in this decision still stand.
+> [ADR 0015](0015-node-execution-timeouts.md) adds a generic timeout for one
+> node executor attempt.
 
 ## Context
 

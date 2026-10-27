@@ -30,8 +30,8 @@ timeout.
 
 ### Checkpoint: Workflow contract
 
-- [ ] Schema tests cover omitted, minimum, maximum, and invalid timeout values.
-- [ ] Existing retry policy parsing remains unchanged.
+- [x] Schema tests cover omitted, minimum, maximum, and invalid timeout values.
+- [x] Existing retry policy parsing remains unchanged.
 
 ### Phase 2: Engine behavior
 
@@ -40,27 +40,27 @@ timeout.
 ### Checkpoint: Engine behavior
 
 - [x] Timeout, success-before-timeout, abort, late-result, retry interaction, and
-  retry regressions are covered by deterministic engine tests.
+      retry regressions are covered by deterministic engine tests.
 - [ ] Engine coverage remains above the documented 90% thresholds.
 
 ### Phase 3: Decision and docs
 
-- [ ] Task 3: Record ADR 0015 and update architecture/HTTP documentation.
+- [x] Task 3: Record ADR 0015 and update architecture/HTTP documentation.
 
 ### Checkpoint: Complete
 
 - [ ] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
-  pass; deleted-test guard compares against `main`.
+      pass; deleted-test guard compares against `main`.
 - [ ] Diff reviewed; ready for PR.
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| A timed-out executor ignores its signal and continues side effects. | High | Abort the attempt signal, stop consuming its result, document cooperative cancellation, and do not retry timeouts. |
-| A timeout sleep remains active after a fast node succeeds. | Medium | Use a dedicated abort signal for the sleep and test that success cancels it. |
-| Workflow cancellation races the deadline. | Medium | Race cancellation explicitly and prioritize the run's aborted state in error handling. |
-| Schema and engine validation limits drift. | Low | Use the same bound in both layers and test the schema boundary plus manually constructed typed workflows. |
+| Risk                                                                | Impact | Mitigation                                                                                                         |
+| ------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| A timed-out executor ignores its signal and continues side effects. | High   | Abort the attempt signal, stop consuming its result, document cooperative cancellation, and do not retry timeouts. |
+| A timeout sleep remains active after a fast node succeeds.          | Medium | Use a dedicated abort signal for the sleep and test that success cancels it.                                       |
+| Workflow cancellation races the deadline.                           | Medium | Race cancellation explicitly and prioritize the run's aborted state in error handling.                             |
+| Schema and engine validation limits drift.                          | Low    | Use the same bound in both layers and test the schema boundary plus manually constructed typed workflows.          |
 
 ## Open Questions
 

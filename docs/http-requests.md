@@ -27,6 +27,12 @@ already present on the current item:
 }
 ```
 
+The HTTP node's `parameters.timeoutMs` bounds the request at the adapter. A
+workflow node can also set a top-level `timeoutMs` to bound each executor
+attempt, including request setup. The engine deadline aborts the attempt signal
+and is terminal rather than retried; the HTTP adapter deadline remains active as
+an independent bound. See [ADR 0015](adr/0015-node-execution-timeouts.md).
+
 ## Retries
 
 Retry policy is per node instance, not a parameter:

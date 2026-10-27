@@ -63,6 +63,9 @@ imports. See [`CONSTRAINTS.md`](../../CONSTRAINTS.md).
    is retried; the retry sleep uses the `Clock` port and every failed attempt is
    visible in the trace. A step that may have performed an external effect must
    use an idempotency key or be marked as non-retryable.
+8. A node instance may set `timeoutMs` to bound each executor attempt. The engine
+   aborts the attempt signal and fails visibly at the deadline; timed-out work is
+   not automatically retried because its effects may be uncertain.
 
 ## Engine ports
 
@@ -76,18 +79,21 @@ The engine is a pure library. It receives the outside world through narrow ports
 - `RunStore` — claim, checkpoint, and journal persistence.
 - `Secrets` — resolve credentials without putting plaintext in the journal.
 
-Stage 1 implements `Clock` and `Http`. The CLI supplies the real HTTP adapter;
-the engine and node tests use fake ports. `Random`, `RunStore`, and `Secrets`
-arrive with their first consumer. The engine returns a trace (and, later, journal
-events) rather than logging directly; the worker owns structured logging and
-redaction. Tests use a simulation with fake ports. The engine never reads
-`process.env`, calls `fetch`, uses `Date.now`, touches the database, or opens its
-own network, timer, crypto, or console handles.
+Stage 1 implements `Clock` and `Http`. `Clock.sleep` drives retries and generic
+node deadlines without ambient timers in the engine. The CLI supplies the real
+HTTP adapter; the engine and node tests use fake ports. `Random`, `RunStore`, and
+`Secrets` arrive with their first consumer. The engine returns a trace (and,
+later, journal events) rather than logging directly; the worker owns structured
+logging and redaction. Tests use a simulation with fake ports. The engine never
+reads `process.env`, calls `fetch`, uses `Date.now`, touches the database, or
+opens its own network, timer, crypto, or console handles.
 
 The HTTP adapter is the only code in Stage 1 that opens a network connection. It
 blocks private and link-local addresses by default, pins the validated DNS
 address, does not follow redirects, and enforces the request timeout and response
-limit. See [ADR 0014](../adr/0014-http-request-and-retries.md).
+limit. The generic per-node deadline and HTTP request timeout are separate; see
+[ADR 0014](../adr/0014-http-request-and-retries.md) and
+[ADR 0015](../adr/0015-node-execution-timeouts.md).
 
 ## Data model summary
 
@@ -133,7 +139,8 @@ The detailed exit criteria are in
 - API framework: [`docs/adr/0010-api-framework.md`](../adr/0010-api-framework.md).
 - Code sandbox: [`docs/adr/0012-code-sandbox.md`](../adr/0012-code-sandbox.md).
 
-The expression language, Stage 1 execution model, and HTTP/retry slice are
-accepted in [ADR 0011](../adr/0011-expression-language.md),
-[ADR 0013](../adr/0013-engine-execution-model.md), and
-[ADR 0014](../adr/0014-http-request-and-retries.md).
+The expression language, Stage 1 execution model, HTTP/retry slice, and node
+timeouts are accepted in [ADR 0011](../adr/0011-expression-language.md),
+[ADR 0013](../adr/0013-engine-execution-model.md),
+[ADR 0014](../adr/0014-http-request-and-retries.md), and
+[ADR 0015](../adr/0015-node-execution-timeouts.md).

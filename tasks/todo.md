@@ -6,16 +6,18 @@
 the shared workflow type.
 
 **Acceptance criteria:**
+
 - [x] Omitted timeout stays omitted.
 - [x] Integers from 1 through 120,000 are accepted.
 - [x] Zero, negative, non-integer, over-limit, and non-number values are rejected
-  with a path-aware `SchemaError`.
+      with a path-aware `SchemaError`.
 
 **Verification:** `bunx vitest run packages/schema/src/workflow.test.ts`.
 
 **Dependencies:** None.
 
 **Files likely touched:**
+
 - `packages/schema/src/workflow.ts`
 - `packages/schema/src/workflow.test.ts`
 
@@ -28,11 +30,12 @@ execution against `Clock.sleep`, use an attempt-scoped signal, and fail
 terminally with a readable trace when the timeout wins.
 
 **Acceptance criteria:**
+
 - [x] Successful execution cancels the pending timeout sleep.
 - [x] Timeout aborts the attempt signal, fails the run, and prevents its late
-  result from advancing the graph.
+      result from advancing the graph.
 - [x] Timeout is not retried, even with a retry policy; workflow cancellation
-  remains distinguishable.
+      remains distinguishable.
 - [x] Existing retries and untimed node execution remain unchanged.
 
 **Verification:** `bunx vitest run packages/engine/src/run.test.ts`; then full
@@ -41,6 +44,7 @@ coverage gate.
 **Dependencies:** Task 1.
 
 **Files likely touched:**
+
 - `packages/engine/src/run.ts`
 - `packages/engine/src/run.test.ts`
 
@@ -52,18 +56,20 @@ coverage gate.
 the difference from HTTP request timeouts.
 
 **Acceptance criteria:**
-- [ ] ADR 0015 explains timeout, cancellation, retry, and cooperative-executor
-  semantics.
-- [ ] Architecture overview and HTTP guide distinguish generic node deadlines
-  from the HTTP adapter timeout.
-- [ ] ADR index and relevant cross-references are current.
+
+- [x] ADR 0015 explains timeout, cancellation, retry, and cooperative-executor
+      semantics.
+- [x] Architecture overview and HTTP guide distinguish generic node deadlines
+      from the HTTP adapter timeout.
+- [x] ADR index and relevant cross-references are current.
 
 **Verification:** `bun scripts/check-doc-links.ts` and final `bun run check`.
 
 **Dependencies:** Task 2.
 
 **Files likely touched:**
-- `docs/adr/0015-node-timeouts.md`
+
+- `docs/adr/0015-node-execution-timeouts.md`
 - `docs/adr/README.md`
 - `docs/adr/0014-http-request-and-retries.md`
 - `docs/architecture/overview.md`

@@ -16,6 +16,10 @@ timeouts, error ports, and joins until their semantics were decided. This ADR
 decides the HTTP request and retry slice; joins, loops, and error routes remain
 deferred.
 
+> [ADR 0015](0015-node-execution-timeouts.md) later adds the generic engine
+> deadline for one node executor attempt. The HTTP request timeout below remains
+> a separate adapter-level bound.
+
 ## Decision
 
 ### Ports
@@ -76,10 +80,10 @@ A node instance may carry a static retry policy:
 - The engine checks cancellation before each attempt, after each attempt, and
   after each retry sleep.
 
-Per-node timeout enforcement in the engine is deferred. The first consumer is
-an outbound HTTP request, so the request timeout is part of the `Http` contract;
-a generic engine timeout needs a separate decision about executors that do not
-cooperate with an abort signal.
+At the time of this decision, per-node timeout enforcement in the engine was
+deferred. It was later decided separately in
+[ADR 0015](0015-node-execution-timeouts.md), including the cooperative-executor
+limitation.
 
 ### HTTP Request node
 
@@ -161,6 +165,6 @@ abort behaviour without weakening the CLI default.
 - A workflow needs a managed idempotency-key helper for POST retries.
 - Error routes or continue-on-failure policies are added.
 - A private-network allow-list or credentials/secrets are needed.
-- The engine needs generic per-node timeouts or redirect following.
+- Redirect following is needed.
 - A second app (worker) needs the HTTP adapter, so it should move from the CLI
   into a shared runtime package.
