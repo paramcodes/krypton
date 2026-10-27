@@ -71,7 +71,7 @@ from the documentation index and learning path.
 
 ## Checkpoint: Before PR
 
-- [ ] `BASE_SHA=main bun run check` passes.
-- [ ] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
-- [ ] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
-- [ ] Review the diff; no unrelated toolchain changes are included.
+- [x] `BASE_SHA=main bun run check` passes.
+- [x] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
+- [x] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
+- [x] Review the diff; no unrelated toolchain changes are included.

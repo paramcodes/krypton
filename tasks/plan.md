@@ -29,7 +29,7 @@ first matching named port, or to `default` when no case matches.
 
 - [x] Unit tests cover scalar matches, type sensitivity, defaults, shared ports,
       and invalid/ambiguous configuration.
-- [ ] Existing core node behavior remains unchanged.
+- [x] Existing core node behavior remains unchanged.
 
 ### Phase 2: Engine integration
 
@@ -46,9 +46,9 @@ first matching named port, or to `default` when no case matches.
 
 ### Checkpoint: Complete
 
-- [ ] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
+- [x] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
       pass; deleted-test guard compares against `main`.
-- [ ] Diff reviewed and ready for PR.
+- [x] Diff reviewed and ready for PR.
 
 ## Risks and Mitigations
 
