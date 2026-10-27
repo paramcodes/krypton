@@ -17,6 +17,9 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Step budget      | The maximum number of node executions a run may perform before it fails visibly.                                |
 | Journal          | The append-only record of run events used for replay, debugging, and recovery.                                  |
 | Port             | An interface the engine depends on for an external effect, such as time, randomness, HTTP, storage, or secrets. |
+| HTTP port        | The engine interface for outbound requests and destination policy.                                              |
+| Retry policy     | A bounded, per-node rule for retrying failures that a node explicitly marks as retryable.                       |
+| SSRF             | Server-side request forgery: tricking a server into requesting private or otherwise unsafe destinations.        |
 | Simulation       | A deterministic test run that uses fake ports instead of real time, network, or storage.                        |
 | Expect test      | A readable end-to-end test that runs the engine and snapshots the human-readable trace inline.                  |
 | Expression       | A whole-field `{{ expression }}` value reference evaluated per item, with no arbitrary code, I/O, or secrets.   |

@@ -4,6 +4,10 @@
 - Date: 2026-10-27
 - Deciders: project owner, engine implementation owner
 
+> [ADR 0014](0014-http-request-and-retries.md) adds the `Http` port, bounded
+> retries, and HTTP request timeouts. The queue model and the deferral of joins,
+> loops, and error routes in this decision still stand.
+
 ## Context
 
 The Stage 1 engine must run a workflow from JSON in the terminal, with

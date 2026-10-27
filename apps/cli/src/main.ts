@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { readFile, stat } from "node:fs/promises";
 
-import { escapeTerminalText, formatTrace, runWorkflow } from "@krypton/engine";
+import { escapeTerminalText, formatTrace, runWorkflow, type Clock } from "@krypton/engine";
 import { coreNodes } from "@krypton/nodes-core";
 import { parseJsonObject, parseWorkflow } from "@krypton/schema";
+
+import { createHttpPort } from "./http.ts";
 
 const MAX_INPUT_BYTES = 1_000_000;
 
@@ -22,6 +24,18 @@ const writeError = (message: string): void => {
 
 const writeUsageError = (message: string): void => {
   process.stderr.write(`${message}\n\n${USAGE}\n`);
+};
+
+const formatJsonForTerminal = (value: unknown): string => {
+  const serialized = JSON.stringify(value, null, 2);
+  if (serialized === undefined) {
+    throw new Error("Could not serialize workflow output as JSON.");
+  }
+
+  return serialized.replace(
+    /[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+    (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 };
 
 const readJson = async (path: string): Promise<unknown> => {
@@ -73,6 +87,32 @@ const readInputPath = (args: readonly string[]): string | undefined => {
 
   return inputPath;
 };
+
+const createClock = (): Clock => ({
+  now: () => Date.now(),
+  sleep: async (ms, signal) => {
+    if (signal.aborted) {
+      throw new Error("Aborted.");
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = (): void => {
+        clearTimeout(timer);
+        signal.removeEventListener("abort", onAbort);
+        reject(new Error("Aborted."));
+      };
+
+      const timer = setTimeout(() => {
+        signal.removeEventListener("abort", onAbort);
+        resolve();
+      }, ms);
+      signal.addEventListener("abort", onAbort, { once: true });
+      if (signal.aborted) {
+        onAbort();
+      }
+    });
+  },
+});
 
 const run = async (): Promise<number> => {
   const args = process.argv.slice(2);
@@ -133,7 +173,7 @@ const run = async (): Promise<number> => {
       workflow,
       input,
       nodes: coreNodes,
-      ports: { clock: { now: () => Date.now() } },
+      ports: { clock: createClock(), http: createHttpPort() },
       signal: controller.signal,
     });
 
@@ -144,7 +184,7 @@ const run = async (): Promise<number> => {
       return 1;
     }
 
-    writeOut(JSON.stringify(result.outputs, null, 2));
+    writeOut(formatJsonForTerminal(result.outputs));
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

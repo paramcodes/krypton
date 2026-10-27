@@ -4,7 +4,16 @@ import { describe, expect, it } from "vitest";
 
 import { coreNodes } from "./index";
 
-const clock: Clock = { now: () => 0 };
+const clock: Clock = { now: () => 0, sleep: async () => {} };
+
+const ports = {
+  clock,
+  http: {
+    request: async () => {
+      throw new Error("The test HTTP port was not configured.");
+    },
+  },
+};
 
 const triageWorkflow = (condition: boolean | string): ReturnType<typeof parseWorkflow> =>
   parseWorkflow({
@@ -31,7 +40,7 @@ describe("triage workflow", () => {
       workflow: triageWorkflow(true),
       input: { customer: "Ada", plan: "trial" },
       nodes: coreNodes,
-      ports: { clock },
+      ports,
       signal: new AbortController().signal,
     });
 
@@ -52,7 +61,7 @@ describe("triage workflow", () => {
       workflow: triageWorkflow("{{ $json.plan === 'trial' }}"),
       input: { customer: "Ada", plan: "trial" },
       nodes: coreNodes,
-      ports: { clock },
+      ports,
       signal: new AbortController().signal,
     });
 
@@ -67,7 +76,7 @@ describe("triage workflow", () => {
       workflow: triageWorkflow(false),
       input: { customer: "Ada", plan: "trial" },
       nodes: coreNodes,
-      ports: { clock },
+      ports,
       signal: new AbortController().signal,
     });
 

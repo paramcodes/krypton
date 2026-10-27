@@ -6,6 +6,8 @@ Start here:
   boundaries, execution flow.
 - [Glossary](GLOSSARY.md) — plain-language definitions.
 - [Expressions](expressions.md) — the safe field syntax and its limits.
+- [HTTP requests](http-requests.md) — the HTTP Request node, retries, and the
+  outbound security boundary.
 - [Architecture decision records](adr/README.md) — why the foundation looks like
   this, and when to revisit.
 - [Spikes](spikes/README.md) — open questions and the evidence needed to close

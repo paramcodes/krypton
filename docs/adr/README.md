@@ -58,3 +58,4 @@ Name the evidence or event that should reopen this decision.
 | [0011](0011-expression-language.md)         | Expression language: small safe language before sandboxed JS  | accepted |
 | [0012](0012-code-sandbox.md)                | Code node sandbox: isolated runtime, not the API process      | proposed |
 | [0013](0013-engine-execution-model.md)      | Engine execution model: injectable nodes over an item queue   | accepted |
+| [0014](0014-http-request-and-retries.md)    | HTTP Request node, bounded retries, and the Http port         | accepted |

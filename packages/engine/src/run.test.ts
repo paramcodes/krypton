@@ -1,11 +1,42 @@
 import { asNodeId, asWorkflowId, parseWorkflow, type Workflow } from "@krypton/schema";
 import { describe, expect, it } from "vitest";
 
-import type { NodeExecutionResult, NodeExecutor, NodeRegistry } from "./node";
-import type { Clock } from "./ports";
+import {
+  RetryableNodeError,
+  type NodeExecutionResult,
+  type NodeExecutor,
+  type NodeRegistry,
+} from "./node";
+import type { Clock, EnginePorts, Http } from "./ports";
 import { runWorkflow } from "./run";
 
-const clock: Clock = { now: () => 0 };
+const clock: Clock = { now: () => 0, sleep: async () => {} };
+
+const http: Http = {
+  request: async () => {
+    throw new Error("The test HTTP port was not configured.");
+  },
+};
+
+const basePorts: EnginePorts = { clock, http };
+
+const advancingClock = (): { readonly clock: Clock; readonly sleeps: number[] } => {
+  let time = 0;
+  const sleeps: number[] = [];
+  return {
+    clock: {
+      now: () => time,
+      sleep: async (ms, signal) => {
+        if (signal.aborted) {
+          throw new Error("sleep aborted");
+        }
+        sleeps.push(ms);
+        time += ms;
+      },
+    },
+    sleeps,
+  };
+};
 
 const newSignal = (): AbortSignal => new AbortController().signal;
 
@@ -17,6 +48,10 @@ const empty: NodeExecutor = async () => ({ outputs: [] });
 
 const explode: NodeExecutor = async () => {
   throw new Error("boom");
+};
+
+const transient: NodeExecutor = async () => {
+  throw new RetryableNodeError("HTTP 503.");
 };
 
 const tag: NodeExecutor = async ({ item, nodeId }) => ({
@@ -97,7 +132,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -119,7 +154,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -144,7 +179,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -172,7 +207,7 @@ describe("runWorkflow", () => {
       }),
       input: { customer: "Ada", plan: "trial", tags: ["web"] },
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -212,7 +247,7 @@ describe("runWorkflow", () => {
       }),
       input: { source: "web" },
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -250,7 +285,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes: { ...nodes, tracking },
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -274,7 +309,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -294,7 +329,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -311,7 +346,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -336,7 +371,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -360,7 +395,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: controller.signal,
     });
 
@@ -386,7 +421,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
       maxSteps: 2,
     });
@@ -405,7 +440,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
       maxSteps: 0,
     });
@@ -423,7 +458,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
       maxQueuedItems: 0,
     });
@@ -444,7 +479,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
       maxQueuedItems: 1,
     });
@@ -465,7 +500,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -492,7 +527,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes: { ...nodes, aborting },
-      ports: { clock },
+      ports: basePorts,
       signal: controller.signal,
     });
 
@@ -516,7 +551,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes: { ...nodes, aborting },
-      ports: { clock },
+      ports: basePorts,
       signal: controller.signal,
     });
 
@@ -542,7 +577,7 @@ describe("runWorkflow", () => {
       }),
       input: { source: "web" },
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -570,7 +605,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -591,7 +626,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -606,6 +641,7 @@ describe("runWorkflow", () => {
         tick += 10;
         return tick;
       },
+      sleep: async () => {},
     };
 
     const result = await runWorkflow({
@@ -620,7 +656,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock: tickingClock },
+      ports: { clock: tickingClock, http },
       signal: newSignal(),
     });
 
@@ -637,7 +673,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -658,7 +694,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
       maxQueuedItems: 1,
     });
@@ -676,7 +712,7 @@ describe("runWorkflow", () => {
       }),
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
@@ -704,11 +740,236 @@ describe("runWorkflow", () => {
       workflow: malformed,
       input: {},
       nodes,
-      ports: { clock },
+      ports: basePorts,
       signal: newSignal(),
     });
 
     expect(result.status).toBe("fail");
     expect(result.trace.at(-1)?.detail).toBe('Connection points to unknown node "missing".');
+  });
+
+  it("retries a retryable failure with exponential backoff and records each attempt", async () => {
+    const { clock: retryClock, sleeps } = advancingClock();
+    let attempts = 0;
+    const flaky: NodeExecutor = async ({ item }) => {
+      attempts += 1;
+      if (attempts < 3) {
+        throw new RetryableNodeError("HTTP 503.");
+      }
+      return { outputs: [{ port: "main", items: [item] }], detail: "HTTP 200" };
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "retry-success",
+        name: "Retry success",
+        nodes: [
+          {
+            id: "request",
+            type: "flaky",
+            retry: { maxAttempts: 3, delayMs: 1_000, backoff: "exponential" },
+          },
+        ],
+      }),
+      input: {},
+      nodes: { flaky },
+      ports: { clock: retryClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/3: HTTP 503.",
+      },
+      {
+        atMs: 1_000,
+        node: "request",
+        status: "fail",
+        detail: "attempt 2/3: HTTP 503.",
+      },
+      {
+        atMs: 3_000,
+        node: "request",
+        status: "ok",
+        detail: "attempt 3/3: HTTP 200",
+      },
+    ]);
+    expect(sleeps).toEqual([1_000, 2_000]);
+  });
+
+  it("fails visibly after the final retryable attempt", async () => {
+    const { clock: retryClock, sleeps } = advancingClock();
+    let attempts = 0;
+    const alwaysTransient: NodeExecutor = async () => {
+      attempts += 1;
+      throw new RetryableNodeError("HTTP 503.");
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "retry-exhausted",
+        name: "Retry exhausted",
+        nodes: [
+          {
+            id: "request",
+            type: "always-transient",
+            retry: { maxAttempts: 3, delayMs: 500 },
+          },
+        ],
+      }),
+      input: {},
+      nodes: { "always-transient": alwaysTransient },
+      ports: { clock: retryClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(attempts).toBe(3);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/3: HTTP 503.",
+      },
+      {
+        atMs: 500,
+        node: "request",
+        status: "fail",
+        detail: "attempt 2/3: HTTP 503.",
+      },
+      {
+        atMs: 1_000,
+        node: "request",
+        status: "fail",
+        detail: "attempt 3/3: HTTP 503.",
+      },
+    ]);
+    expect(sleeps).toEqual([500, 500]);
+  });
+
+  it("does not retry an ordinary node error", async () => {
+    const { clock: retryClock, sleeps } = advancingClock();
+    let attempts = 0;
+    const invalid: NodeExecutor = async () => {
+      attempts += 1;
+      throw new Error("Invalid parameter.");
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "no-retry",
+        name: "No retry",
+        nodes: [
+          {
+            id: "request",
+            type: "invalid",
+            retry: { maxAttempts: 3, delayMs: 500 },
+          },
+        ],
+      }),
+      input: {},
+      nodes: { invalid },
+      ports: { clock: retryClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(attempts).toBe(1);
+    expect(result.trace).toEqual([
+      { atMs: 0, node: "request", status: "fail", detail: "Invalid parameter." },
+    ]);
+    expect(sleeps).toEqual([]);
+  });
+
+  it("cancels a retry while it is waiting to try again", async () => {
+    const controller = new AbortController();
+    const retryClock: Clock = {
+      now: () => 0,
+      sleep: async () => {
+        controller.abort();
+        throw new Error("sleep aborted");
+      },
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "cancel-retry",
+        name: "Cancel retry",
+        nodes: [
+          {
+            id: "request",
+            type: "transient",
+            retry: { maxAttempts: 3, delayMs: 1_000 },
+          },
+        ],
+      }),
+      input: {},
+      nodes: { transient },
+      ports: { clock: retryClock, http },
+      signal: controller.signal,
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/3: HTTP 503.",
+      },
+      {
+        atMs: 0,
+        node: "workflow",
+        status: "fail",
+        detail: "Run cancelled.",
+      },
+    ]);
+  });
+
+  it("rejects an invalid retry policy before executing a node", async () => {
+    let attempts = 0;
+    const tracking: NodeExecutor = async ({ item }) => {
+      attempts += 1;
+      return { outputs: [{ port: "main", items: [item] }] };
+    };
+
+    const invalidRetry: Workflow = {
+      id: asWorkflowId("invalid-retry"),
+      name: "Invalid retry",
+      expressionVersion: 1,
+      nodes: [
+        {
+          id: asNodeId("request"),
+          type: "tracking",
+          parameters: {},
+          retry: { maxAttempts: 0, delayMs: 1, backoff: "fixed" },
+        },
+      ],
+      connections: [],
+    };
+
+    const result = await runWorkflow({
+      workflow: invalidRetry,
+      input: {},
+      nodes: { tracking },
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(attempts).toBe(0);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "Retry maxAttempts must be an integer between 1 and 10.",
+      },
+    ]);
   });
 });

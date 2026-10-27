@@ -1,9 +1,9 @@
 # Architecture overview
 
-Status: Stage 1 in progress. The pure engine, first built-in nodes, and a
-terminal runner are being built. The API, editor, and worker are not implemented
-yet. This document describes the target shape and the boundaries those stages
-must respect. The full proposal is in
+Status: Stage 1 in progress. The pure engine, first built-in nodes, bounded
+retries, an HTTP Request node, and a terminal runner are being built. The API,
+editor, and worker are not implemented yet. This document describes the target
+shape and the boundaries those stages must respect. The full proposal is in
 [`research/02-architecture.md`](../../research/02-architecture.md).
 
 ## Goals
@@ -59,26 +59,35 @@ imports. See [`CONSTRAINTS.md`](../../CONSTRAINTS.md).
    references, and a redacted error.
 6. The API streams journal updates to the editor over SSE. The editor can reopen
    the run and read the same trace later.
-7. Retries are explicit and bounded. A step that may have performed an external
-   effect must use an idempotency key or be marked as non-retryable.
+7. Retries are explicit and bounded. Only an error marked `RetryableNodeError`
+   is retried; the retry sleep uses the `Clock` port and every failed attempt is
+   visible in the trace. A step that may have performed an external effect must
+   use an idempotency key or be marked as non-retryable.
 
 ## Engine ports
 
 The engine is a pure library. It receives the outside world through narrow ports:
 
-- `Clock` — `now()` in Stage 1; `sleep(ms, signal)` arrives with the first
-  timeout or retry that needs simulated time.
+- `Clock` — `now()` and `sleep(ms, signal)`. Retry delays use the injected clock,
+  so a fake clock can advance deterministic time in tests.
 - `Random` — seeded randomness and IDs.
-- `Http` — outbound requests with timeouts, size limits, and SSRF policy.
+- `Http` — outbound requests with a required timeout, a response-size cap, and a
+  classified failure that says whether a retry is safe.
 - `RunStore` — claim, checkpoint, and journal persistence.
 - `Secrets` — resolve credentials without putting plaintext in the journal.
 
-Stage 1 currently implements only `Clock`; the other ports arrive with their
-first consumer. The engine returns a trace (and, later, journal events) rather
-than logging directly; the worker owns structured logging and redaction. Tests
-use a simulation with fake ports. The engine never reads `process.env`, calls
-`fetch`, uses `Date.now`, touches the database, or opens its own network, timer,
-crypto, or console handles.
+Stage 1 implements `Clock` and `Http`. The CLI supplies the real HTTP adapter;
+the engine and node tests use fake ports. `Random`, `RunStore`, and `Secrets`
+arrive with their first consumer. The engine returns a trace (and, later, journal
+events) rather than logging directly; the worker owns structured logging and
+redaction. Tests use a simulation with fake ports. The engine never reads
+`process.env`, calls `fetch`, uses `Date.now`, touches the database, or opens its
+own network, timer, crypto, or console handles.
+
+The HTTP adapter is the only code in Stage 1 that opens a network connection. It
+blocks private and link-local addresses by default, pins the validated DNS
+address, does not follow redirects, and enforces the request timeout and response
+limit. See [ADR 0014](../adr/0014-http-request-and-retries.md).
 
 ## Data model summary
 
@@ -124,6 +133,7 @@ The detailed exit criteria are in
 - API framework: [`docs/adr/0010-api-framework.md`](../adr/0010-api-framework.md).
 - Code sandbox: [`docs/adr/0012-code-sandbox.md`](../adr/0012-code-sandbox.md).
 
-The expression language and Stage 1 execution model are accepted in
-[ADR 0011](../adr/0011-expression-language.md) and
-[ADR 0013](../adr/0013-engine-execution-model.md).
+The expression language, Stage 1 execution model, and HTTP/retry slice are
+accepted in [ADR 0011](../adr/0011-expression-language.md),
+[ADR 0013](../adr/0013-engine-execution-model.md), and
+[ADR 0014](../adr/0014-http-request-and-retries.md).

@@ -1,4 +1,4 @@
-import type { Connection, JsonObject, NodeInstance, Workflow } from "@krypton/schema";
+import type { Connection, JsonObject, NodeInstance, RetryPolicy, Workflow } from "@krypton/schema";
 
 import {
   compileParameters,
@@ -6,7 +6,13 @@ import {
   ExpressionError,
   type CompiledParameters,
 } from "./expression.ts";
-import { isNodeExecutionResult, type NodeOutput, type NodeRegistry } from "./node.ts";
+import {
+  isNodeExecutionResult,
+  RetryableNodeError,
+  type NodeExecutionResult,
+  type NodeOutput,
+  type NodeRegistry,
+} from "./node.ts";
 import type { EnginePorts } from "./ports.ts";
 import type { TraceLine } from "./trace.ts";
 
@@ -14,6 +20,43 @@ const DEFAULT_MAX_STEPS = 10_000;
 const DEFAULT_MAX_QUEUED_ITEMS = 10_000;
 const DEFAULT_PORT = "main";
 const SUPPORTED_EXPRESSION_VERSION = 1;
+const MAX_RETRY_ATTEMPTS = 10;
+const MAX_RETRY_DELAY_MS = 60_000;
+
+const defaultRetryPolicy: RetryPolicy = {
+  maxAttempts: 1,
+  delayMs: 0,
+  backoff: "fixed",
+};
+
+const readRetryPolicy = (node: NodeInstance): RetryPolicy | string => {
+  if (node.retry === undefined) {
+    return defaultRetryPolicy;
+  }
+
+  const { maxAttempts, delayMs, backoff } = node.retry;
+  if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > MAX_RETRY_ATTEMPTS) {
+    return `Retry maxAttempts must be an integer between 1 and ${MAX_RETRY_ATTEMPTS}.`;
+  }
+  if (!Number.isSafeInteger(delayMs) || delayMs < 0 || delayMs > MAX_RETRY_DELAY_MS) {
+    return `Retry delayMs must be an integer between 0 and ${MAX_RETRY_DELAY_MS}.`;
+  }
+  if (backoff !== "fixed" && backoff !== "exponential") {
+    return 'Retry backoff must be "fixed" or "exponential".';
+  }
+
+  return { maxAttempts, delayMs, backoff };
+};
+
+const retryDelay = (policy: RetryPolicy, attempt: number): number => {
+  if (policy.backoff === "fixed") {
+    return policy.delayMs;
+  }
+  return Math.min(MAX_RETRY_DELAY_MS, policy.delayMs * 2 ** (attempt - 1));
+};
+
+const errorDetail = (error: unknown): string =>
+  error instanceof Error ? error.message : "Node execution failed.";
 
 export type RunStatus = "ok" | "fail";
 
@@ -90,6 +133,7 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
   }
 
   const compiledParameters = new Map<NodeInstance["id"], CompiledParameters>();
+  const retryPolicies = new Map<NodeInstance["id"], RetryPolicy>();
   for (const node of options.workflow.nodes) {
     try {
       compiledParameters.set(node.id, compileParameters(node.parameters, "$.parameters"));
@@ -98,6 +142,12 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
         error instanceof ExpressionError ? error.message : "Could not compile node parameters.";
       return fail(node.id, detail);
     }
+
+    const retryPolicy = readRetryPolicy(node);
+    if (typeof retryPolicy === "string") {
+      return fail(node.id, retryPolicy);
+    }
+    retryPolicies.set(node.id, retryPolicy);
   }
 
   const nodesById = new Map<NodeInstance["id"], NodeInstance>();
@@ -168,35 +218,81 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
       return fail(entry.node.id, detail);
     }
 
-    let rawResult: unknown;
-    try {
-      rawResult = await executor({
-        nodeId: entry.node.id,
-        nodeType: entry.node.type,
-        item: entry.item,
-        parameters,
-        ports: options.ports,
-        signal: options.signal,
-      });
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : "Node execution failed.";
-      return fail(entry.node.id, detail);
+    const retryPolicy = retryPolicies.get(entry.node.id) ?? defaultRetryPolicy;
+    let result: NodeExecutionResult | undefined;
+    let attempts = 0;
+
+    for (let attempt = 1; attempt <= retryPolicy.maxAttempts; attempt += 1) {
+      if (options.signal.aborted) {
+        return fail("workflow", "Run cancelled.");
+      }
+      attempts = attempt;
+
+      try {
+        const rawResult: unknown = await executor({
+          nodeId: entry.node.id,
+          nodeType: entry.node.type,
+          item: entry.item,
+          parameters,
+          ports: options.ports,
+          signal: options.signal,
+        });
+
+        if (options.signal.aborted) {
+          return fail("workflow", "Run cancelled.");
+        }
+
+        if (!isNodeExecutionResult(rawResult)) {
+          return fail(entry.node.id, "Node returned an invalid result.");
+        }
+
+        result = rawResult;
+        break;
+      } catch (error) {
+        if (options.signal.aborted) {
+          return fail("workflow", "Run cancelled.");
+        }
+
+        if (!(error instanceof RetryableNodeError)) {
+          return fail(entry.node.id, errorDetail(error));
+        }
+
+        trace.push({
+          atMs: elapsed(),
+          node: entry.node.id,
+          status: "fail",
+          detail: `attempt ${attempt}/${retryPolicy.maxAttempts}: ${error.message}`,
+        });
+
+        if (attempt >= retryPolicy.maxAttempts) {
+          return { status: "fail", trace, outputs };
+        }
+
+        try {
+          await options.ports.clock.sleep(retryDelay(retryPolicy, attempt), options.signal);
+        } catch (sleepError) {
+          if (options.signal.aborted) {
+            return fail("workflow", "Run cancelled.");
+          }
+          return fail(entry.node.id, errorDetail(sleepError));
+        }
+
+        if (options.signal.aborted) {
+          return fail("workflow", "Run cancelled.");
+        }
+      }
     }
 
-    if (options.signal.aborted) {
-      return fail("workflow", "Run cancelled.");
+    if (result === undefined) {
+      return fail(entry.node.id, "Node did not complete.");
     }
 
-    if (!isNodeExecutionResult(rawResult)) {
-      return fail(entry.node.id, "Node returned an invalid result.");
-    }
-
-    const result = rawResult;
+    const detail = result.detail ?? formatItemCount(countOutputItems(result.outputs));
     trace.push({
       atMs: elapsed(),
       node: entry.node.id,
       status: "ok",
-      detail: result.detail ?? formatItemCount(countOutputItems(result.outputs)),
+      detail: attempts > 1 ? `attempt ${attempts}/${retryPolicy.maxAttempts}: ${detail}` : detail,
     });
 
     const edges = outgoing.get(entry.node.id) ?? [];
