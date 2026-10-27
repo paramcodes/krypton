@@ -54,6 +54,8 @@ const transient: NodeExecutor = async () => {
   throw new RetryableNodeError("HTTP 503.");
 };
 
+const neverFinishes: NodeExecutor = () => new Promise<NodeExecutionResult>(() => {});
+
 const tag: NodeExecutor = async ({ item, nodeId }) => ({
   outputs: [{ port: "main", items: [{ ...item, start: nodeId }] }],
 });
@@ -969,6 +971,172 @@ describe("runWorkflow", () => {
         node: "request",
         status: "fail",
         detail: "Retry maxAttempts must be an integer between 1 and 10.",
+      },
+    ]);
+  });
+
+  it("times out an attempt, aborts its signal, and ignores its late result", async () => {
+    let time = 0;
+    let attempts = 0;
+    let observedAbort = false;
+    let downstreamExecutions = 0;
+    const timeoutClock: Clock = {
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    };
+    const lateNode: NodeExecutor = ({ signal }) => {
+      attempts += 1;
+      return new Promise((resolve) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            observedAbort = true;
+            resolve({ outputs: [{ port: "main", items: [{ late: true }] }] });
+          },
+          { once: true },
+        );
+      });
+    };
+    const downstream: NodeExecutor = async ({ item }) => {
+      downstreamExecutions += 1;
+      return { outputs: [{ port: "main", items: [item] }] };
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "node-timeout",
+        name: "Node timeout",
+        nodes: [
+          {
+            id: "slow",
+            type: "late",
+            timeoutMs: 10,
+            retry: { maxAttempts: 3, delayMs: 1 },
+          },
+          { id: "after", type: "downstream" },
+        ],
+        connections: [{ from: "slow", to: "after" }],
+      }),
+      input: {},
+      nodes: { late: lateNode, downstream },
+      ports: { clock: timeoutClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.trace).toEqual([
+      { atMs: 10, node: "slow", status: "fail", detail: "Node timed out after 10ms." },
+    ]);
+    expect(observedAbort).toBe(true);
+    expect(attempts).toBe(1);
+    expect(downstreamExecutions).toBe(0);
+    expect(result.outputs).toEqual([]);
+  });
+
+  it("cancels the pending timeout sleep when an attempt completes", async () => {
+    let sleepCancelled = false;
+    const timeoutClock: Clock = {
+      now: () => 0,
+      sleep: (_ms, signal) =>
+        new Promise<void>((_resolve, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => {
+              sleepCancelled = true;
+              reject(new Error("timeout sleep cancelled"));
+            },
+            { once: true },
+          );
+        }),
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "timeout-success",
+        name: "Timeout success",
+        nodes: [{ id: "start", type: "echo", timeoutMs: 100 }],
+      }),
+      input: { value: "done" },
+      nodes: { echo },
+      ports: { clock: timeoutClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toEqual([{ value: "done" }]);
+    expect(sleepCancelled).toBe(true);
+  });
+
+  it("reports workflow cancellation instead of timing out a non-cooperative node", async () => {
+    const controller = new AbortController();
+    const timeoutClock: Clock = {
+      now: () => 0,
+      sleep: (_ms, signal) =>
+        new Promise<void>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("timeout sleep cancelled")), {
+            once: true,
+          });
+        }),
+    };
+    const pending = runWorkflow({
+      workflow: workflow({
+        id: "cancel-timeout",
+        name: "Cancel timeout",
+        nodes: [{ id: "start", type: "never", timeoutMs: 100 }],
+      }),
+      input: {},
+      nodes: { never: neverFinishes },
+      ports: { clock: timeoutClock, http },
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    const result = await pending;
+    expect(result.status).toBe("fail");
+    expect(result.trace).toEqual([
+      { atMs: 0, node: "workflow", status: "fail", detail: "Run cancelled." },
+    ]);
+  });
+
+  it("rejects invalid in-memory timeout values before node execution", async () => {
+    let executions = 0;
+    const invalidTimeout: Workflow = {
+      id: asWorkflowId("invalid-timeout"),
+      name: "Invalid timeout",
+      expressionVersion: 1,
+      nodes: [
+        {
+          id: asNodeId("start"),
+          type: "tracking",
+          parameters: {},
+          timeoutMs: 120_001,
+        },
+      ],
+      connections: [],
+    };
+    const tracking: NodeExecutor = async ({ item }) => {
+      executions += 1;
+      return { outputs: [{ port: "main", items: [item] }] };
+    };
+
+    const result = await runWorkflow({
+      workflow: invalidTimeout,
+      input: {},
+      nodes: { tracking },
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(executions).toBe(0);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "start",
+        status: "fail",
+        detail: "timeoutMs must be an integer between 1 and 120000.",
       },
     ]);
   });

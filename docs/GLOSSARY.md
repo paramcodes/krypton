@@ -18,6 +18,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Journal          | The append-only record of run events used for replay, debugging, and recovery.                                  |
 | Port             | An interface the engine depends on for an external effect, such as time, randomness, HTTP, storage, or secrets. |
 | HTTP port        | The engine interface for outbound requests and destination policy.                                              |
+| Node timeout     | A per-attempt deadline that aborts a node's signal and fails the run if its executor does not finish in time.   |
 | Retry policy     | A bounded, per-node rule for retrying failures that a node explicitly marks as retryable.                       |
 | SSRF             | Server-side request forgery: tricking a server into requesting private or otherwise unsafe destinations.        |
 | Simulation       | A deterministic test run that uses fake ports instead of real time, network, or storage.                        |
