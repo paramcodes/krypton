@@ -225,4 +225,66 @@ describe("workflow parsing", () => {
       }),
     ).toThrow(/non-empty string/);
   });
+
+  it("parses a bounded retry policy and defaults backoff to fixed", () => {
+    const workflow = parseWorkflow({
+      id: "retry",
+      name: "Retry",
+      nodes: [
+        {
+          id: "request",
+          type: "http-request",
+          retry: { maxAttempts: 3, delayMs: 1_000 },
+        },
+      ],
+    });
+
+    expect(workflow.nodes[0]?.retry).toEqual({
+      maxAttempts: 3,
+      delayMs: 1_000,
+      backoff: "fixed",
+    });
+  });
+
+  it("parses an exponential retry policy", () => {
+    const workflow = parseWorkflow({
+      id: "retry",
+      name: "Retry",
+      nodes: [
+        {
+          id: "request",
+          type: "http-request",
+          retry: { maxAttempts: 4, delayMs: 250, backoff: "exponential" },
+        },
+      ],
+    });
+
+    expect(workflow.nodes[0]?.retry).toEqual({
+      maxAttempts: 4,
+      delayMs: 250,
+      backoff: "exponential",
+    });
+  });
+
+  it("rejects retry policies outside their bounds", () => {
+    const invalid = [
+      { maxAttempts: 0, delayMs: 1 },
+      { maxAttempts: 11, delayMs: 1 },
+      { maxAttempts: 1.5, delayMs: 1 },
+      { maxAttempts: 2, delayMs: -1 },
+      { maxAttempts: 2, delayMs: 60_001 },
+      { maxAttempts: 2, delayMs: 1, backoff: "random" },
+      "not-an-object",
+    ];
+
+    for (const retry of invalid) {
+      expect(() =>
+        parseWorkflow({
+          id: "bad-retry",
+          name: "Bad retry",
+          nodes: [{ id: "request", type: "http-request", retry }],
+        }),
+      ).toThrow(SchemaError);
+    }
+  });
 });

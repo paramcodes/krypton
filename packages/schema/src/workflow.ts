@@ -2,10 +2,19 @@ import { asNodeId, asWorkflowId, type NodeId, type WorkflowId } from "./brand.ts
 import { SchemaError } from "./errors.ts";
 import { isRecord, parseJsonObject, type JsonObject } from "./json.ts";
 
+export type RetryBackoff = "fixed" | "exponential";
+
+export type RetryPolicy = {
+  readonly maxAttempts: number;
+  readonly delayMs: number;
+  readonly backoff: RetryBackoff;
+};
+
 export type NodeInstance = {
   readonly id: NodeId;
   readonly type: string;
   readonly parameters: JsonObject;
+  readonly retry?: RetryPolicy;
 };
 
 export type Connection = {
@@ -76,6 +85,47 @@ const readPositiveInteger = (
   return value;
 };
 
+const readIntegerInRange = (
+  record: Readonly<Record<string, unknown>>,
+  key: string,
+  path: string,
+  minimum: number,
+  maximum: number,
+): number => {
+  const value = record[key];
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < minimum ||
+    value > maximum
+  ) {
+    throw new SchemaError(
+      `${path}.${key}`,
+      `Expected an integer between ${minimum} and ${maximum}.`,
+    );
+  }
+  return value;
+};
+
+const MAX_RETRY_ATTEMPTS = 10;
+const MAX_RETRY_DELAY_MS = 60_000;
+
+const parseRetryPolicy = (value: unknown, path: string): RetryPolicy => {
+  const record = readObject(value, path);
+  const maxAttempts = readIntegerInRange(record, "maxAttempts", path, 1, MAX_RETRY_ATTEMPTS);
+  const delayMs = readIntegerInRange(record, "delayMs", path, 0, MAX_RETRY_DELAY_MS);
+  const backoffValue = record["backoff"];
+  if (backoffValue !== undefined && backoffValue !== "fixed" && backoffValue !== "exponential") {
+    throw new SchemaError(`${path}.backoff`, 'Expected "fixed" or "exponential".');
+  }
+
+  return {
+    maxAttempts,
+    delayMs,
+    backoff: backoffValue === "exponential" ? "exponential" : "fixed",
+  };
+};
+
 const readOptionalString = (
   record: Readonly<Record<string, unknown>>,
   key: string,
@@ -101,8 +151,13 @@ const parseNode = (value: unknown, path: string): NodeInstance => {
   const parametersValue = record["parameters"];
   const parameters =
     parametersValue === undefined ? {} : parseJsonObject(parametersValue, `${path}.parameters`);
+  const retryValue = record["retry"];
+  const retry =
+    retryValue === undefined ? undefined : parseRetryPolicy(retryValue, `${path}.retry`);
 
-  return { id: asNodeId(id), type, parameters };
+  return retry === undefined
+    ? { id: asNodeId(id), type, parameters }
+    : { id: asNodeId(id), type, parameters, retry };
 };
 
 const parseConnection = (

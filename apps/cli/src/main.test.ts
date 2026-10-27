@@ -63,4 +63,32 @@ describe("krypton CLI", () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it("keeps terminal controls escaped in final JSON output", () => {
+    const directory = mkdtempSync(join(tmpdir(), "krypton-cli-output-"));
+    const workflowPath = join(directory, "workflow.json");
+    const inputPath = join(directory, "input.json");
+
+    try {
+      writeFileSync(
+        workflowPath,
+        JSON.stringify({
+          id: "safe-output",
+          name: "Safe output",
+          nodes: [{ id: "start", type: "manual-trigger" }],
+          connections: [],
+        }),
+      );
+      writeFileSync(inputPath, JSON.stringify({ value: `before\u202eafter\u0085` }));
+
+      const result = runCli(["run", workflowPath, "--input", inputPath]);
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).not.toContain("\u202e");
+      expect(result.stdout).not.toContain("\u0085");
+      expect(result.stdout).toContain("before\\u202eafter\\u0085");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });

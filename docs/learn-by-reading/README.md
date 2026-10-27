@@ -16,7 +16,9 @@ each step builds on the previous one.
    — a full expect test with the real nodes, an item queue, and branch ports.
 7. [`packages/engine/src/expression.test.ts`](../../packages/engine/src/expression.test.ts)
    — parser and evaluator cases for the safe field language.
-8. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
+8. [`packages/nodes-core/src/http.test.ts`](../../packages/nodes-core/src/http.test.ts)
+   — a flaky HTTP request, fake ports, retry attempts, and a readable trace.
+9. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
    engine is tested.
 
 ## Exercises
@@ -28,8 +30,10 @@ each step builds on the previous one.
 
 ## What comes next
 
-Stage 1 adds the pure engine, a deterministic simulation, the first nodes, safe
-field expressions, and a readable execution trace. The current slice is in
-place: the CLI, [`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts),
-and [`expression.test.ts`](../../packages/engine/src/expression.test.ts) show a
-real run and the expression grammar.
+Stage 1 adds the pure engine, a deterministic simulation, built-in nodes, safe
+field expressions, bounded retries, an HTTP Request node, and a readable
+execution trace. The CLI,
+[`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts),
+[`expression.test.ts`](../../packages/engine/src/expression.test.ts), and
+[`http.test.ts`](../../packages/nodes-core/src/http.test.ts) show the current
+slice.

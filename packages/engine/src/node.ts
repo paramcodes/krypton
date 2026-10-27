@@ -31,6 +31,17 @@ export type NodeExecutor = (context: NodeExecutionContext) => Promise<NodeExecut
 
 export type NodeRegistry = Readonly<Record<string, NodeExecutor>>;
 
+/**
+ * Mark a failure as safe to retry under the node instance's retry policy.
+ * Validation errors and ordinary node errors deliberately do not opt in.
+ */
+export class RetryableNodeError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "RetryableNodeError";
+  }
+}
+
 const isNodeOutput = (value: unknown): value is NodeOutput => {
   if (!isRecord(value)) {
     return false;

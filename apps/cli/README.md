@@ -12,6 +12,13 @@ The workflow and input are parsed at the boundary. Invalid JSON, unknown node
 references, and node parameter errors fail with a non-zero exit code. Each JSON
 file is capped at 1 MiB.
 
+The CLI supplies the real `Clock` and `Http` ports. HTTP requests have an
+explicit timeout, a response-size cap, and no automatic redirects. Private,
+loopback, link-local, and reserved address ranges are blocked by default, and the
+validated DNS address is pinned before connecting. See
+[`docs/http-requests.md`](../../docs/http-requests.md) for the node parameters,
+retry policy, and output shape.
+
 Node parameters may contain whole-field expressions such as
 `"{{ $json.plan === 'trial' }}"`. Expressions are compiled before the run and
 evaluated per item; see [`docs/expressions.md`](../../docs/expressions.md) for
