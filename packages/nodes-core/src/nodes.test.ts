@@ -7,7 +7,7 @@ import {
   type NodeExecutionContext,
   type NodeExecutor,
 } from "@krypton/engine";
-import { asNodeId, type JsonObject } from "@krypton/schema";
+import { asNodeId, type JsonObject, type JsonValue } from "@krypton/schema";
 import { describe, expect, it } from "vitest";
 
 import { coreNodes } from "./index";
@@ -98,6 +98,86 @@ describe("core node parameters", () => {
     await expect(executor("if")(context({ condition: "true" }))).rejects.toThrow(
       /must be a boolean/,
     );
+  });
+
+  it("routes matching JSON scalar values to their named ports", async () => {
+    const scenarios: readonly {
+      readonly value: JsonValue;
+      readonly matchingValue: JsonValue;
+      readonly port: string;
+    }[] = [
+      { value: "paid", matchingValue: "paid", port: "paid" },
+      { value: 3, matchingValue: 3, port: "three" },
+      { value: true, matchingValue: true, port: "enabled" },
+      { value: null, matchingValue: null, port: "empty" },
+    ];
+
+    for (const scenario of scenarios) {
+      const result = await executor("switch")(
+        context({
+          value: scenario.value,
+          cases: [{ value: scenario.matchingValue, port: scenario.port }],
+        }),
+      );
+
+      expect(result.outputs).toEqual([
+        { port: scenario.port, items: [{ customer: "Ada" }] },
+      ]);
+      expect(result.detail).toBe(`switch ${scenario.port}`);
+    }
+  });
+
+  it("routes unmatched values to the default port and distinguishes scalar types", async () => {
+    const result = await executor("switch")(
+      context({ value: 1, cases: [{ value: "1", port: "string-one" }] }),
+    );
+
+    expect(result.outputs).toEqual([{ port: "default", items: [{ customer: "Ada" }] }]);
+    expect(result.detail).toBe("switch default");
+  });
+
+  it("allows distinct cases to share an output port", async () => {
+    const result = await executor("switch")(
+      context({
+        value: "archived",
+        cases: [
+          { value: "deleted", port: "inactive" },
+          { value: "archived", port: "inactive" },
+        ],
+      }),
+    );
+
+    expect(result.outputs).toEqual([{ port: "inactive", items: [{ customer: "Ada" }] }]);
+  });
+
+  it("rejects missing, empty, duplicate, and composite case configuration", async () => {
+    for (const parameters of [
+      { cases: [{ value: "paid", port: "paid" }] },
+      { value: "paid", cases: [] },
+      {
+        value: "paid",
+        cases: [
+          { value: "paid", port: "paid" },
+          { value: "paid", port: "duplicate" },
+        ],
+      },
+      { value: { status: "paid" }, cases: [{ value: "paid", port: "paid" }] },
+      { value: "paid", cases: [{ value: ["paid"], port: "paid" }] },
+      { value: "paid", cases: [{ port: "paid" }] },
+      { value: "paid", cases: "not-an-array" },
+    ]) {
+      await expect(executor("switch")(context(parameters))).rejects.toThrow(/Switch node/);
+    }
+  });
+
+  it("rejects empty and control-character output port names", async () => {
+    for (const port of ["", "  ", "bad\nport"]) {
+      await expect(
+        executor("switch")(
+          context({ value: "paid", cases: [{ value: "paid", port }] }),
+        ),
+      ).rejects.toThrow(/port/i);
+    }
   });
 });
 
