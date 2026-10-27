@@ -35,11 +35,11 @@ timeout.
 
 ### Phase 2: Engine behavior
 
-- [ ] Task 2: Enforce per-attempt timeouts with cancellation and trace behavior.
+- [x] Task 2: Enforce per-attempt timeouts with cancellation and trace behavior.
 
 ### Checkpoint: Engine behavior
 
-- [ ] Timeout, success-before-timeout, abort, late-result, retry interaction, and
+- [x] Timeout, success-before-timeout, abort, late-result, retry interaction, and
   retry regressions are covered by deterministic engine tests.
 - [ ] Engine coverage remains above the documented 90% thresholds.
 

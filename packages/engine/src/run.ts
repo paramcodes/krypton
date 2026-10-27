@@ -22,6 +22,7 @@ const DEFAULT_PORT = "main";
 const SUPPORTED_EXPRESSION_VERSION = 1;
 const MAX_RETRY_ATTEMPTS = 10;
 const MAX_RETRY_DELAY_MS = 60_000;
+const MAX_NODE_TIMEOUT_MS = 120_000;
 
 const defaultRetryPolicy: RetryPolicy = {
   maxAttempts: 1,
@@ -57,6 +58,109 @@ const retryDelay = (policy: RetryPolicy, attempt: number): number => {
 
 const errorDetail = (error: unknown): string =>
   error instanceof Error ? error.message : "Node execution failed.";
+
+class NodeTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Node timed out after ${timeoutMs}ms.`);
+    this.name = "NodeTimeoutError";
+  }
+}
+
+const readNodeTimeout = (node: NodeInstance): number | string | undefined => {
+  const { timeoutMs } = node;
+  if (timeoutMs === undefined) {
+    return undefined;
+  }
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > MAX_NODE_TIMEOUT_MS
+  ) {
+    return `timeoutMs must be an integer between 1 and ${MAX_NODE_TIMEOUT_MS}.`;
+  }
+  return timeoutMs;
+};
+
+const executeWithTimeout = async (
+  execute: (signal: AbortSignal) => Promise<unknown>,
+  timeoutMs: number,
+  clock: EnginePorts["clock"],
+  runSignal: AbortSignal,
+): Promise<unknown> => {
+  if (runSignal.aborted) {
+    throw new Error("Run cancelled.");
+  }
+
+  const attemptController = new AbortController();
+  const timeoutController = new AbortController();
+  const listeners: { onRunAbort?: () => void } = {};
+  let timedOut = false;
+
+  const cancellation = new Promise<never>((_resolve, reject) => {
+    const onRunAbort = (): void => {
+      attemptController.abort();
+      reject(new Error("Run cancelled."));
+    };
+    listeners.onRunAbort = onRunAbort;
+    runSignal.addEventListener("abort", onRunAbort, { once: true });
+    if (runSignal.aborted) {
+      onRunAbort();
+    }
+  });
+
+  if (runSignal.aborted) {
+    if (listeners.onRunAbort !== undefined) {
+      runSignal.removeEventListener("abort", listeners.onRunAbort);
+    }
+    return await cancellation;
+  }
+
+  const timeout = Promise.resolve()
+    .then(() => clock.sleep(timeoutMs, timeoutController.signal))
+    .then(() => {
+      if (timeoutController.signal.aborted) {
+        throw new Error("Timeout sleep was cancelled.");
+      }
+      timedOut = true;
+      attemptController.abort();
+      throw new NodeTimeoutError(timeoutMs);
+    });
+
+  let execution: Promise<unknown>;
+  try {
+    execution = execute(attemptController.signal);
+  } catch (error) {
+    execution = Promise.reject(error);
+  }
+  const guardedExecution = execution.then(
+    (result) => {
+      if (timedOut) {
+        throw new NodeTimeoutError(timeoutMs);
+      }
+      return result;
+    },
+    (error: unknown) => {
+      if (timedOut) {
+        throw new NodeTimeoutError(timeoutMs);
+      }
+      throw error;
+    },
+  );
+
+  try {
+    return await Promise.race([guardedExecution, timeout, cancellation]);
+  } catch (error) {
+    if (!timedOut && !runSignal.aborted) {
+      attemptController.abort();
+    }
+    throw error;
+  } finally {
+    timeoutController.abort();
+    if (listeners.onRunAbort !== undefined) {
+      runSignal.removeEventListener("abort", listeners.onRunAbort);
+    }
+  }
+};
 
 export type RunStatus = "ok" | "fail";
 
@@ -134,6 +238,7 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
 
   const compiledParameters = new Map<NodeInstance["id"], CompiledParameters>();
   const retryPolicies = new Map<NodeInstance["id"], RetryPolicy>();
+  const timeouts = new Map<NodeInstance["id"], number>();
   for (const node of options.workflow.nodes) {
     try {
       compiledParameters.set(node.id, compileParameters(node.parameters, "$.parameters"));
@@ -148,6 +253,14 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
       return fail(node.id, retryPolicy);
     }
     retryPolicies.set(node.id, retryPolicy);
+
+    const timeoutMs = readNodeTimeout(node);
+    if (typeof timeoutMs === "string") {
+      return fail(node.id, timeoutMs);
+    }
+    if (timeoutMs !== undefined) {
+      timeouts.set(node.id, timeoutMs);
+    }
   }
 
   const nodesById = new Map<NodeInstance["id"], NodeInstance>();
@@ -219,6 +332,7 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
     }
 
     const retryPolicy = retryPolicies.get(entry.node.id) ?? defaultRetryPolicy;
+    const timeoutMs = timeouts.get(entry.node.id);
     let result: NodeExecutionResult | undefined;
     let attempts = 0;
 
@@ -229,14 +343,19 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
       attempts = attempt;
 
       try {
-        const rawResult: unknown = await executor({
-          nodeId: entry.node.id,
-          nodeType: entry.node.type,
-          item: entry.item,
-          parameters,
-          ports: options.ports,
-          signal: options.signal,
-        });
+        const execute = (signal: AbortSignal): Promise<unknown> =>
+          executor({
+            nodeId: entry.node.id,
+            nodeType: entry.node.type,
+            item: entry.item,
+            parameters,
+            ports: options.ports,
+            signal,
+          });
+        const rawResult: unknown =
+          timeoutMs === undefined
+            ? await execute(options.signal)
+            : await executeWithTimeout(execute, timeoutMs, options.ports.clock, options.signal);
 
         if (options.signal.aborted) {
           return fail("workflow", "Run cancelled.");

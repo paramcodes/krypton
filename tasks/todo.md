@@ -28,12 +28,12 @@ execution against `Clock.sleep`, use an attempt-scoped signal, and fail
 terminally with a readable trace when the timeout wins.
 
 **Acceptance criteria:**
-- [ ] Successful execution cancels the pending timeout sleep.
-- [ ] Timeout aborts the attempt signal, fails the run, and prevents its late
+- [x] Successful execution cancels the pending timeout sleep.
+- [x] Timeout aborts the attempt signal, fails the run, and prevents its late
   result from advancing the graph.
-- [ ] Timeout is not retried, even with a retry policy; workflow cancellation
+- [x] Timeout is not retried, even with a retry policy; workflow cancellation
   remains distinguishable.
-- [ ] Existing retries and untimed node execution remain unchanged.
+- [x] Existing retries and untimed node execution remain unchanged.
 
 **Verification:** `bunx vitest run packages/engine/src/run.test.ts`; then full
 coverage gate.
