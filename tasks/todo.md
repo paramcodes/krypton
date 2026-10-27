@@ -79,7 +79,7 @@ the difference from HTTP request timeouts.
 
 ## Checkpoint: Before PR
 
-- [ ] `BASE_SHA=main bun run check` passes.
-- [ ] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
-- [ ] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
-- [ ] Review the diff and confirm no suppression or weakened test was added.
+- [x] `BASE_SHA=main bun run check` passes.
+- [x] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
+- [x] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
+- [x] Review the diff and confirm no suppression or weakened test was added.

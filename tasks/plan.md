@@ -41,7 +41,7 @@ timeout.
 
 - [x] Timeout, success-before-timeout, abort, late-result, retry interaction, and
       retry regressions are covered by deterministic engine tests.
-- [ ] Engine coverage remains above the documented 90% thresholds.
+- [x] Engine coverage remains above the documented 90% thresholds.
 
 ### Phase 3: Decision and docs
 
@@ -49,9 +49,9 @@ timeout.
 
 ### Checkpoint: Complete
 
-- [ ] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
+- [x] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
       pass; deleted-test guard compares against `main`.
-- [ ] Diff reviewed; ready for PR.
+- [x] Diff reviewed; ready for PR.
 
 ## Risks and Mitigations
 
