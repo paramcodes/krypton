@@ -15,6 +15,7 @@ export type NodeInstance = {
   readonly type: string;
   readonly parameters: JsonObject;
   readonly retry?: RetryPolicy;
+  readonly timeoutMs?: number;
 };
 
 export type Connection = {
@@ -109,6 +110,7 @@ const readIntegerInRange = (
 
 const MAX_RETRY_ATTEMPTS = 10;
 const MAX_RETRY_DELAY_MS = 60_000;
+const MAX_NODE_TIMEOUT_MS = 120_000;
 
 const parseRetryPolicy = (value: unknown, path: string): RetryPolicy => {
   const record = readObject(value, path);
@@ -154,10 +156,17 @@ const parseNode = (value: unknown, path: string): NodeInstance => {
   const retryValue = record["retry"];
   const retry =
     retryValue === undefined ? undefined : parseRetryPolicy(retryValue, `${path}.retry`);
+  const timeoutValue = record["timeoutMs"];
+  const timeoutMs =
+    timeoutValue === undefined
+      ? undefined
+      : readIntegerInRange(record, "timeoutMs", path, 1, MAX_NODE_TIMEOUT_MS);
 
-  return retry === undefined
-    ? { id: asNodeId(id), type, parameters }
-    : { id: asNodeId(id), type, parameters, retry };
+  const node = { id: asNodeId(id), type, parameters };
+  if (timeoutMs === undefined) {
+    return retry === undefined ? node : { ...node, retry };
+  }
+  return retry === undefined ? { ...node, timeoutMs } : { ...node, retry, timeoutMs };
 };
 
 const parseConnection = (

@@ -287,4 +287,32 @@ describe("workflow parsing", () => {
       ).toThrow(SchemaError);
     }
   });
+
+  it("keeps an omitted node timeout absent and accepts both bounds", () => {
+    const workflow = parseWorkflow({
+      id: "timeouts",
+      name: "Timeouts",
+      nodes: [
+        { id: "untimed", type: "manual-trigger" },
+        { id: "minimum", type: "set", timeoutMs: 1 },
+        { id: "maximum", type: "set", timeoutMs: 120_000 },
+      ],
+    });
+
+    expect(workflow.nodes[0]).not.toHaveProperty("timeoutMs");
+    expect(workflow.nodes[1]?.timeoutMs).toBe(1);
+    expect(workflow.nodes[2]?.timeoutMs).toBe(120_000);
+  });
+
+  it("rejects node timeouts outside their bounds", () => {
+    for (const timeoutMs of [0, -1, 1.5, 120_001, "1000", null]) {
+      expect(() =>
+        parseWorkflow({
+          id: "bad-timeout",
+          name: "Bad timeout",
+          nodes: [{ id: "node", type: "set", timeoutMs }],
+        }),
+      ).toThrow(SchemaError);
+    }
+  });
 });
