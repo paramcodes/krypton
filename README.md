@@ -4,9 +4,10 @@ Krypton is a self-hosted visual workflow automation app for people who want to
 run automations on their own hardware without giving up observability, version
 control, or a clean interface.
 
-Status: **Stage 0 — foundation**. There is no editor or runtime yet. The repo has
-the monorepo, quality gates, guardrails, architecture decisions, and agent setup
-that the later stages build on.
+Status: **Stage 1 — pure engine and terminal runner in progress**. The repo has
+the monorepo, quality gates, guardrails, architecture decisions, and agent setup.
+The engine can run a validated workflow from JSON with the first built-in nodes;
+the API, editor, and worker are later stages.
 
 ## Why
 
@@ -30,12 +31,13 @@ Requirements: Bun 1.4.4, Node 26, and Podman for containers (Docker works in CI)
 ```sh
 bun install
 bun run check
+bun run cli -- run examples/triage.workflow.json --input examples/triage.input.json
 bunx playwright install chromium
 bun run e2e
 ```
 
 `bun run check` runs guardrails, formatting, linting, typechecking, and unit
-tests. It should stay under 10 seconds on the Stage 0 tree. The Playwright
+tests. It should stay under 10 seconds on the current tree. The Playwright
 browser is installed separately because it is a large download.
 
 If the project skills are missing:
@@ -62,6 +64,7 @@ value is a placeholder.
 | Path                  | What it is                                       |
 | --------------------- | ------------------------------------------------ |
 | `apps/api`            | HTTP API and control plane (Stage 2)             |
+| `apps/cli`            | Terminal workflow runner (Stage 1)               |
 | `apps/web`            | React editor (Stage 3)                           |
 | `apps/worker`         | Durable execution worker (Stage 4)               |
 | `apps/docs`           | Documentation site (Stage 9)                     |
@@ -96,6 +99,7 @@ are enforced. The guardrail scripts have temp-repo regression tests in
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md)
 - [`docs/adr/`](docs/adr/README.md)
 - [`docs/spikes/README.md`](docs/spikes/README.md)
+- [`examples/`](examples/README.md)
 - [`AGENTS.md`](AGENTS.md) and [`CONSTRAINTS.md`](CONSTRAINTS.md)
 
 ## Licence

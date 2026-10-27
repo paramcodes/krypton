@@ -20,6 +20,8 @@ workflow tool.
 
 - `bun run check` — the fast gate: guardrails, format, lint, types, unit tests.
 - `bun run test` / `bun run test:coverage` — unit tests / coverage tripwire.
+- `bun run cli -- run <workflow.json> [--input <input.json>]` — run a workflow
+  with the built-in nodes in the terminal.
 - `bun run e2e` — Playwright smoke test (install Chromium first).
 - `bun run guardrails:deleted-tests` — CI test-deletion/assertion-loss check.
 - `bun run skills:install` — restore pinned skills from `skills-lock.json`.
@@ -29,10 +31,11 @@ Run `bun run check` before saying work is done, and show the command output.
 ## Layout and boundaries
 
 `apps/web` is the React editor. `apps/api` is the HTTP control plane.
-`apps/worker` runs executions. `packages/engine` is pure and deterministic.
-`packages/schema` is shared types. `packages/node-sdk` is the public node
-contract. `packages/nodes-core` holds built-in nodes. Read
-`docs/architecture/overview.md` and `docs/adr/` before changing a boundary.
+`apps/worker` runs executions. `apps/cli` runs workflows in the terminal.
+`packages/engine` is pure and deterministic. `packages/schema` is shared types.
+`packages/node-sdk` is the public node contract. `packages/nodes-core` holds
+built-in nodes. Read `docs/architecture/overview.md` and `docs/adr/` before
+changing a boundary.
 
 ## Non-negotiables
 

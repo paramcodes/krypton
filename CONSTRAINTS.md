@@ -31,8 +31,11 @@ an ADR. Do not bypass it.
   must not import DB, HTTP frameworks, or UI.
 - `apps/web` may import schema and node SDK types; it must not import the engine,
   database, or server framework.
+- `apps/cli` may import schema, engine, and nodes-core; it must not import the
+  API, worker, web editor, database, or UI.
 - Server apps must not import the web editor.
 - The engine uses ports: `Clock`, `Random`, `Http`, `RunStore`, `Secrets`.
+  Ports are added with their first consumer; Stage 1 starts with `Clock`.
 - Enforced by Oxlint `no-restricted-imports` with actionable messages,
   `scripts/check-guardrails.ts` for the declared `@krypton/*` dependency map and
   pure-package imports, and `turbo boundaries` for undeclared imports.
