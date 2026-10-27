@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "types": ["node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "useUnknownInCatchVariables": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}

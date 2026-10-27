@@ -1,0 +1,21 @@
+{
+  "printWidth": 100,
+  "singleQuote": false,
+  "semi": true,
+  "trailingComma": "all",
+  "proseWrap": "preserve",
+  "endOfLine": "lf",
+  "sortImports": true,
+  "ignorePatterns": [
+    "bun.lock",
+    "LICENSE",
+    "research/**",
+    ".agents/**",
+    "skills-lock.json",
+    "node_modules/**",
+    "coverage/**",
+    "test-results/**",
+    "playwright-report/**",
+    ".turbo/**"
+  ]
+}

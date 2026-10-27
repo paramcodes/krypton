@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Local tooling
+.bun/
+*.log
+
+# Installed agent skills (restore from skills-lock.json)
+.agents/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local databases and container data
+*.sqlite
+*.sqlite3
+.data/

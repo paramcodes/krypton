@@ -1,0 +1,10 @@
+{
+  "name": "@krypton/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@krypton/node-sdk": "workspace:*",
+    "@krypton/schema": "workspace:*"
+  }
+}

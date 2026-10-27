@@ -1,0 +1,555 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": [".agents/**", "research/**"],
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "vitest", "react"],
+  "env": {
+    "node": true,
+    "es2024": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "eqeqeq": "error",
+    "no-console": "warn",
+    "no-debugger": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-check": false,
+        "ts-expect-error": true,
+        "ts-ignore": true,
+        "ts-nocheck": true
+      }
+    ],
+    "react/no-danger": "error",
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+    "unicorn/prefer-node-protocol": "error"
+  },
+  "options": {
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts", "e2e/**/*.ts"],
+      "rules": {
+        "no-console": "off",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-focused-tests": "error"
+      }
+    },
+    {
+      "files": ["packages/schema/**/*.ts"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "process",
+            "message": "Schema must stay runtime-free. Pass parsed values in from the boundary."
+          },
+          {
+            "name": "Buffer",
+            "message": "Schema must stay runtime-free. Use plain JSON values."
+          },
+          {
+            "name": "crypto",
+            "message": "Schema must stay deterministic. Randomness belongs behind a port."
+          },
+          {
+            "name": "performance",
+            "message": "Schema must stay deterministic. Timing belongs behind a port."
+          },
+          {
+            "name": "fetch",
+            "message": "Schema must not reach the network. Move I/O to the API or worker."
+          },
+          {
+            "name": "console",
+            "message": "Schema must not log. Return a value or raise a typed error."
+          },
+          {
+            "name": "setTimeout",
+            "message": "Schema must stay synchronous and runtime-free."
+          },
+          {
+            "name": "setInterval",
+            "message": "Schema must stay synchronous and runtime-free."
+          },
+          {
+            "name": "setImmediate",
+            "message": "Schema must stay synchronous and runtime-free."
+          },
+          {
+            "name": "queueMicrotask",
+            "message": "Schema must stay synchronous and runtime-free."
+          },
+          {
+            "name": "WebSocket",
+            "message": "Schema must not open ambient connections."
+          },
+          {
+            "name": "XMLHttpRequest",
+            "message": "Schema must not open ambient connections."
+          },
+          {
+            "name": "EventSource",
+            "message": "Schema must not open ambient connections."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^node:",
+                "message": "Schema must stay runtime-free. Every Node built-in is forbidden here."
+              },
+              {
+                "group": ["bun", "bun:*"],
+                "message": "Schema must stay runtime-free. It must run in any JavaScript host."
+              },
+              {
+                "group": ["@krypton/*"],
+                "message": "Schema must not depend on other packages. Keep shared types in packages/schema and import them by package name."
+              },
+              {
+                "group": ["**/packages/*/src/**", "**/apps/**"],
+                "message": "Schema must not reach into other packages by relative path. Import @krypton/schema from consumers instead."
+              },
+              {
+                "regex": "^(node:)?(fs|path|http|https|crypto|child_process|worker_threads|os|net|tls|dns|stream|util|zlib|buffer|events|url|timers|vm)(/.*)?$",
+                "message": "Schema must stay runtime-free. Move runtime work to engine, nodes-core, or an app."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/engine/**/*.ts"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "process",
+            "message": "Engine must use ports. Do not read process arguments, environment, or platform."
+          },
+          {
+            "name": "Buffer",
+            "message": "Engine must stay on plain JSON values. Binary data belongs behind a port."
+          },
+          {
+            "name": "crypto",
+            "message": "Engine must use the Clock/Random/Secrets ports, not ambient crypto."
+          },
+          {
+            "name": "performance",
+            "message": "Engine must use the Clock port so time is simulated in tests."
+          },
+          {
+            "name": "fetch",
+            "message": "Engine must use the Http port, not ambient fetch."
+          },
+          {
+            "name": "console",
+            "message": "Engine must return trace/journal events. The worker owns logging and redaction."
+          },
+          {
+            "name": "setTimeout",
+            "message": "Engine must use clock.sleep(ms, signal), not ambient timers."
+          },
+          {
+            "name": "setInterval",
+            "message": "Engine must use clock.sleep(ms, signal), not ambient timers."
+          },
+          {
+            "name": "setImmediate",
+            "message": "Engine must use clock.sleep(ms, signal), not ambient timers."
+          },
+          {
+            "name": "queueMicrotask",
+            "message": "Engine must keep scheduling explicit and simulated."
+          },
+          {
+            "name": "WebSocket",
+            "message": "Engine must use the Http port, not ambient connections."
+          },
+          {
+            "name": "XMLHttpRequest",
+            "message": "Engine must use the Http port, not ambient connections."
+          },
+          {
+            "name": "EventSource",
+            "message": "Engine must use the Http port, not ambient connections."
+          },
+          {
+            "name": "window",
+            "message": "Engine must not access the DOM. Pass a port or a plain value instead."
+          },
+          {
+            "name": "document",
+            "message": "Engine must not access the DOM. Pass a port or a plain value instead."
+          },
+          {
+            "name": "localStorage",
+            "message": "Engine must not access browser storage. Pass a RunStore or Secrets port."
+          },
+          {
+            "name": "sessionStorage",
+            "message": "Engine must not access browser storage. Pass a RunStore or Secrets port."
+          },
+          {
+            "name": "navigator",
+            "message": "Engine must not inspect the host environment. Pass a port instead."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "drizzle-orm",
+                "message": "Engine must stay pure. Pass a RunStore port instead; see docs/architecture/overview.md."
+              },
+              {
+                "name": "pg",
+                "message": "Engine must stay pure. Pass a RunStore port instead; see docs/architecture/overview.md."
+              },
+              {
+                "name": "postgres",
+                "message": "Engine must stay pure. Pass a RunStore port instead; see docs/architecture/overview.md."
+              },
+              {
+                "name": "hono",
+                "message": "Engine must not import an HTTP framework. Pass an Http port instead; see docs/architecture/overview.md."
+              },
+              {
+                "name": "fastify",
+                "message": "Engine must not import an HTTP framework. Pass an Http port instead; see docs/architecture/overview.md."
+              },
+              {
+                "name": "@krypton/nodes-core",
+                "message": "Engine must not depend on node implementations. Node code depends on engine types, not the reverse."
+              },
+              {
+                "name": "@krypton/node-sdk",
+                "message": "Engine must not depend on the public node SDK. Keep the contract one-way."
+              },
+              {
+                "name": "react",
+                "message": "Engine is headless. The UI lives in apps/web."
+              },
+              {
+                "name": "react-dom",
+                "message": "Engine is headless. The UI lives in apps/web."
+              }
+            ],
+            "patterns": [
+              {
+                "regex": "^node:",
+                "message": "Engine must stay portable. Every Node built-in is forbidden; pass a port instead."
+              },
+              {
+                "group": ["bun", "bun:*"],
+                "message": "Engine must stay portable. Do not depend on the Bun runtime."
+              },
+              {
+                "regex": "^(node:)?(fs|path|http|https|child_process|worker_threads|os|net|tls|dns|stream|util|zlib|buffer|events|url|timers|vm)(/.*)?$",
+                "message": "Engine must not use runtime or OS APIs directly. Pass a port (Clock, Random, Http, RunStore, Secrets) instead."
+              },
+              {
+                "group": ["**/packages/*/src/**", "**/apps/**"],
+                "message": "Engine must not reach into other packages by relative path. Import @krypton/schema or define a port."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/node-sdk/**/*.ts"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "process",
+            "message": "The node SDK must receive runtime values through its contract, not process."
+          },
+          {
+            "name": "Buffer",
+            "message": "The node SDK must stay on plain JSON values. Binary data belongs behind a port."
+          },
+          {
+            "name": "crypto",
+            "message": "The node SDK must receive randomness or secrets through its contract."
+          },
+          {
+            "name": "performance",
+            "message": "The node SDK must receive timing through its contract."
+          },
+          {
+            "name": "fetch",
+            "message": "The node SDK must receive an Http port, not ambient fetch."
+          },
+          {
+            "name": "console",
+            "message": "The node SDK must not log. Return values and let the worker log."
+          },
+          {
+            "name": "setTimeout",
+            "message": "The node SDK must receive a Clock port, not ambient timers."
+          },
+          {
+            "name": "setInterval",
+            "message": "The node SDK must receive a Clock port, not ambient timers."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The node SDK must receive a Clock port, not ambient timers."
+          },
+          {
+            "name": "queueMicrotask",
+            "message": "The node SDK must keep scheduling explicit and simulated."
+          },
+          {
+            "name": "WebSocket",
+            "message": "The node SDK must receive an Http port, not ambient connections."
+          },
+          {
+            "name": "XMLHttpRequest",
+            "message": "The node SDK must receive an Http port, not ambient connections."
+          },
+          {
+            "name": "EventSource",
+            "message": "The node SDK must receive an Http port, not ambient connections."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@krypton/engine",
+                "message": "The public node SDK must not import engine internals. Use the contract exported from @krypton/node-sdk and @krypton/schema."
+              },
+              {
+                "name": "@krypton/nodes-core",
+                "message": "The public node SDK must not depend on built-in nodes."
+              },
+              {
+                "name": "drizzle-orm",
+                "message": "The node SDK must stay persistence-free. Nodes receive ports and data."
+              },
+              {
+                "name": "pg",
+                "message": "The node SDK must stay persistence-free. Nodes receive ports and data."
+              },
+              {
+                "name": "hono",
+                "message": "The node SDK must not depend on the API framework."
+              },
+              {
+                "name": "fastify",
+                "message": "The node SDK must not depend on the API framework."
+              },
+              {
+                "name": "react",
+                "message": "The node SDK is headless. The UI lives in apps/web."
+              },
+              {
+                "name": "react-dom",
+                "message": "The node SDK is headless. The UI lives in apps/web."
+              }
+            ],
+            "patterns": [
+              {
+                "regex": "^node:",
+                "message": "The node SDK must stay portable. Every Node built-in is forbidden; receive effects through the contract."
+              },
+              {
+                "group": ["bun", "bun:*"],
+                "message": "The node SDK must stay portable. Do not depend on the Bun runtime."
+              },
+              {
+                "regex": "^(node:)?(fs|path|http|https|child_process|worker_threads|os|net|tls|dns|stream|util|zlib|buffer|events|url|timers|vm)(/.*)?$",
+                "message": "The node SDK must not use runtime APIs directly. Receive them through the node contract."
+              },
+              {
+                "group": ["**/packages/*/src/**", "**/apps/**"],
+                "message": "The node SDK must not reach into other packages by relative path. Import the public package instead."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/nodes-core/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "drizzle-orm",
+                "message": "Built-in nodes must not access the database. Use ports and node inputs."
+              },
+              {
+                "name": "pg",
+                "message": "Built-in nodes must not access the database. Use ports and node inputs."
+              },
+              {
+                "name": "hono",
+                "message": "Built-in nodes must not depend on the API framework."
+              },
+              {
+                "name": "fastify",
+                "message": "Built-in nodes must not depend on the API framework."
+              },
+              {
+                "name": "react",
+                "message": "Built-in nodes are headless. The UI lives in apps/web."
+              },
+              {
+                "name": "react-dom",
+                "message": "Built-in nodes are headless. The UI lives in apps/web."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["**/apps/**"],
+                "message": "Packages must not import apps. Dependencies point from apps to packages."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/api/**/*.ts", "apps/worker/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@krypton/web",
+                "message": "Server code must not import the editor. The web app talks to the API."
+              },
+              {
+                "name": "react",
+                "message": "Server code must not import React. The UI lives in apps/web."
+              },
+              {
+                "name": "react-dom",
+                "message": "Server code must not import React. The UI lives in apps/web."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["**/apps/web/**"],
+                "message": "Server code must not import the editor by relative path. The web app talks to the API."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/src/**/*.ts", "apps/web/src/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@krypton/engine",
+                "message": "Web must not run the engine in the browser. Call the API instead; see docs/architecture/overview.md."
+              },
+              {
+                "name": "@krypton/nodes-core",
+                "message": "Web must not import server-side node implementations. Call the API instead."
+              },
+              {
+                "name": "drizzle-orm",
+                "message": "Web must not access the database. Call the API instead."
+              },
+              {
+                "name": "pg",
+                "message": "Web must not access the database. Call the API instead."
+              },
+              {
+                "name": "postgres",
+                "message": "Web must not access the database. Call the API instead."
+              },
+              {
+                "name": "hono",
+                "message": "Web must not import the server framework. Call the API instead."
+              },
+              {
+                "name": "fastify",
+                "message": "Web must not import the server framework. Call the API instead."
+              }
+            ],
+            "patterns": [
+              {
+                "regex": "^node:",
+                "message": "Browser code must not use Node runtime APIs. Keep server work in apps/api or apps/worker."
+              },
+              {
+                "regex": "^(node:)?(fs|path|http|https|crypto|child_process|worker_threads|os|net|tls|dns|stream|util|zlib|buffer|events|url|timers|vm)(/.*)?$",
+                "message": "Browser code must not use Node runtime APIs. Keep server work in apps/api or apps/worker."
+              },
+              {
+                "group": ["**/packages/*/src/**", "**/apps/**"],
+                "message": "Web must import public package entrypoints, not reach into source files. Use @krypton/schema or @krypton/node-sdk types."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/schema/src/brand.ts"],
+      "rules": {
+        "typescript/consistent-type-assertions": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/docs/**/*.ts",
+        "apps/docs/**/*.tsx",
+        "apps/docs/**/*.js",
+        "apps/docs/**/*.jsx"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@krypton/*"],
+                "message": "Docs must not import product runtime code. Link to the public docs or show a code sample."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

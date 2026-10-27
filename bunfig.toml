@@ -1,0 +1,4 @@
+[install]
+# pnpm-style strictness: packages may only import what they declare.
+linker = "isolated"
+hoist = false

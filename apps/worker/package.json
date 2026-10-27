@@ -1,0 +1,12 @@
+{
+  "name": "@krypton/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@krypton/engine": "workspace:*",
+    "@krypton/node-sdk": "workspace:*",
+    "@krypton/nodes-core": "workspace:*",
+    "@krypton/schema": "workspace:*"
+  }
+}

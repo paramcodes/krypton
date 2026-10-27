@@ -1,0 +1,44 @@
+{
+  "name": "krypton",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "check": "bun run guardrails && bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "e2e": "playwright test",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "guardrails": "bun scripts/check-guardrails.ts && bun scripts/check-deleted-tests.ts && turbo boundaries && bun scripts/check-doc-links.ts",
+    "guardrails:boundaries": "turbo boundaries",
+    "guardrails:deleted-tests": "bun scripts/check-deleted-tests.ts",
+    "guardrails:links": "bun scripts/check-doc-links.ts",
+    "lint": "oxlint .",
+    "skills:install": "skills experimental_install -y",
+    "skills:list": "skills list",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "26.6.5",
+    "@vitest/coverage-v8": "5.0.4",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "skills": "1.7.2",
+    "turbo": "2.11.7",
+    "typescript": "7.0.2",
+    "vitest": "5.0.4"
+  },
+  "engines": {
+    "bun": ">=1.4.4",
+    "node": ">=26"
+  },
+  "packageManager": "bun@1.4.4"
+}
