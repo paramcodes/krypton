@@ -9,6 +9,8 @@
 > loops, and error routes in this decision still stand.
 > [ADR 0015](0015-node-execution-timeouts.md) adds a generic timeout for one
 > node executor attempt.
+> [ADR 0016](0016-switch-node.md) adds a built-in Switch that selects among the
+> named output ports already supported by the queue model.
 
 ## Context
 

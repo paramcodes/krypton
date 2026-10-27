@@ -60,3 +60,4 @@ Name the evidence or event that should reopen this decision.
 | [0013](0013-engine-execution-model.md)      | Engine execution model: injectable nodes over an item queue   | accepted |
 | [0014](0014-http-request-and-retries.md)    | HTTP Request node, bounded retries, and the Http port         | accepted |
 | [0015](0015-node-execution-timeouts.md)     | Generic per-node execution timeouts                           | accepted |
+| [0016](0016-switch-node.md)                 | Switch node: strict scalar matching over named ports          | accepted |

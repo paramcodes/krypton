@@ -1,79 +1,71 @@
-# Tasks: Generic node execution timeouts
+# Tasks: Switch node
 
-## Task 1: Parse bounded node timeouts
+## Task 1: Implement Switch routing
 
-**Description:** Add optional `NodeInstance.timeoutMs` parsing and preserve it in
-the shared workflow type.
+**Description:** Add the `switch` executor and validate its selected scalar,
+non-empty cases, unique case values, and output port names.
 
 **Acceptance criteria:**
 
-- [x] Omitted timeout stays omitted.
-- [x] Integers from 1 through 120,000 are accepted.
-- [x] Zero, negative, non-integer, over-limit, and non-number values are rejected
-      with a path-aware `SchemaError`.
+- [x] The first strict scalar match selects its named port; unmatched values use
+      `default`.
+- [x] Different case values may share a port, while duplicate values fail.
+- [x] Composite values, malformed cases, and invalid ports fail visibly.
 
-**Verification:** `bunx vitest run packages/schema/src/workflow.test.ts`.
+**Verification:** `bunx vitest run packages/nodes-core/src/nodes.test.ts`.
 
 **Dependencies:** None.
 
 **Files likely touched:**
 
-- `packages/schema/src/workflow.ts`
-- `packages/schema/src/workflow.test.ts`
+- `packages/nodes-core/src/index.ts`
+- `packages/nodes-core/src/nodes.test.ts`
 
-**Estimated scope:** Small.
+**Estimated scope:** Medium.
 
-## Task 2: Enforce per-attempt engine timeouts
+## Task 2: Add an engine expect test
 
-**Description:** Validate manually constructed timeout values, race timed node
-execution against `Clock.sleep`, use an attempt-scoped signal, and fail
-terminally with a readable trace when the timeout wins.
+**Description:** Exercise Switch through `runWorkflow` with fake ports and
+connected routes; snapshot the readable trace inline.
 
 **Acceptance criteria:**
 
-- [x] Successful execution cancels the pending timeout sleep.
-- [x] Timeout aborts the attempt signal, fails the run, and prevents its late
-      result from advancing the graph.
-- [x] Timeout is not retried, even with a retry policy; workflow cancellation
-      remains distinguishable.
-- [x] Existing retries and untimed node execution remain unchanged.
+- [x] Only the selected downstream node executes.
+- [x] The input item is preserved and the trace records the chosen route.
 
-**Verification:** `bunx vitest run packages/engine/src/run.test.ts`; then full
-coverage gate.
+**Verification:** `bunx vitest run packages/nodes-core/src/switch.test.ts`.
 
 **Dependencies:** Task 1.
 
 **Files likely touched:**
 
-- `packages/engine/src/run.ts`
-- `packages/engine/src/run.test.ts`
+- `packages/nodes-core/src/switch.test.ts`
 
-**Estimated scope:** Medium.
+**Estimated scope:** Small.
 
-## Task 3: Record decision and update docs
+## Task 3: Record and document Switch semantics
 
-**Description:** Add ADR 0015 and document the new per-node timeout contract and
-the difference from HTTP request timeouts.
+**Description:** Add ADR 0016 and a concise Switch node guide, then link them
+from the documentation index and learning path.
 
 **Acceptance criteria:**
 
-- [x] ADR 0015 explains timeout, cancellation, retry, and cooperative-executor
-      semantics.
-- [x] Architecture overview and HTTP guide distinguish generic node deadlines
-      from the HTTP adapter timeout.
-- [x] ADR index and relevant cross-references are current.
+- [x] ADR records scalar-only strict matching, case order, duplicate handling,
+      shared ports, and the default route.
+- [x] Node guide includes parameter shape, matching behavior, and an example.
+- [x] Documentation links resolve.
 
 **Verification:** `bun scripts/check-doc-links.ts` and final `bun run check`.
 
-**Dependencies:** Task 2.
+**Dependencies:** Tasks 1–2.
 
 **Files likely touched:**
 
-- `docs/adr/0015-node-execution-timeouts.md`
+- `docs/adr/0016-switch-node.md`
 - `docs/adr/README.md`
-- `docs/adr/0014-http-request-and-retries.md`
-- `docs/architecture/overview.md`
-- `docs/http-requests.md`
+- `docs/nodes/switch.md`
+- `docs/README.md`
+- `docs/learn-by-reading/README.md`
 
 **Estimated scope:** Medium.
 
@@ -82,4 +74,4 @@ the difference from HTTP request timeouts.
 - [x] `BASE_SHA=main bun run check` passes.
 - [x] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
 - [x] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
-- [x] Review the diff and confirm no suppression or weakened test was added.
+- [x] Review the diff; no unrelated toolchain changes are included.

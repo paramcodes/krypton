@@ -7,7 +7,13 @@ import {
   type HttpResponse,
   type NodeExecutor,
 } from "@krypton/engine";
-import { isJsonObject, parseJsonValue, type JsonObject, type JsonValue } from "@krypton/schema";
+import {
+  isJsonObject,
+  parseJsonValue,
+  type JsonObject,
+  type JsonPrimitive,
+  type JsonValue,
+} from "@krypton/schema";
 
 const manualTrigger: NodeExecutor = async ({ item }) => ({
   outputs: [{ port: "main", items: [item] }],
@@ -38,6 +44,70 @@ const branch: NodeExecutor = async ({ item, parameters }) => {
   return {
     outputs: [{ port, items: [item] }],
     detail: `branch ${port}`,
+  };
+};
+
+const isJsonPrimitive = (value: unknown): value is JsonPrimitive =>
+  value === null ||
+  typeof value === "string" ||
+  typeof value === "boolean" ||
+  (typeof value === "number" && Number.isFinite(value));
+
+const isSwitchPort = (value: unknown): value is string => {
+  if (typeof value !== "string" || value.trim() === "") {
+    return false;
+  }
+  for (const character of value) {
+    const code = character.codePointAt(0);
+    if (code !== undefined && (code <= 0x1f || (code >= 0x7f && code <= 0x9f))) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const switchNode: NodeExecutor = async ({ item, parameters }) => {
+  const value = parameters["value"];
+  if (!isJsonPrimitive(value)) {
+    throw new Error("Switch node parameter 'value' must be a JSON scalar.");
+  }
+
+  const cases = parameters["cases"];
+  if (!Array.isArray(cases) || cases.length === 0) {
+    throw new Error("Switch node parameter 'cases' must be a non-empty array.");
+  }
+
+  const seenValues = new Set<JsonPrimitive>();
+  let matchingPort: string | undefined;
+  for (const [index, caseValue] of cases.entries()) {
+    if (!isJsonObject(caseValue)) {
+      throw new Error(`Switch node case ${index} must be an object.`);
+    }
+
+    const candidate = caseValue["value"];
+    if (!isJsonPrimitive(candidate)) {
+      throw new Error(`Switch node case ${index} value must be a JSON scalar.`);
+    }
+    if (seenValues.has(candidate)) {
+      throw new Error("Switch node case values must be unique.");
+    }
+    seenValues.add(candidate);
+
+    const port = caseValue["port"];
+    if (!isSwitchPort(port)) {
+      throw new Error(
+        `Switch node case ${index} port must be a non-empty string without controls.`,
+      );
+    }
+    if (value === candidate) {
+      matchingPort = port;
+    }
+  }
+
+  const port = matchingPort ?? "default";
+  return {
+    outputs: [{ port, items: [item] }],
+    detail: `switch ${port}`,
   };
 };
 
@@ -286,5 +356,6 @@ export const coreNodes: Readonly<Record<string, NodeExecutor>> = {
   "manual-trigger": manualTrigger,
   set,
   if: branch,
+  switch: switchNode,
   "http-request": httpRequest,
 };
