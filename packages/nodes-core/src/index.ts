@@ -95,7 +95,9 @@ const switchNode: NodeExecutor = async ({ item, parameters }) => {
 
     const port = caseValue["port"];
     if (!isSwitchPort(port)) {
-      throw new Error(`Switch node case ${index} port must be a non-empty string without controls.`);
+      throw new Error(
+        `Switch node case ${index} port must be a non-empty string without controls.`,
+      );
     }
     if (value === candidate) {
       matchingPort = port;

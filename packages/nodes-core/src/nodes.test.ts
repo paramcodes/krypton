@@ -120,9 +120,7 @@ describe("core node parameters", () => {
         }),
       );
 
-      expect(result.outputs).toEqual([
-        { port: scenario.port, items: [{ customer: "Ada" }] },
-      ]);
+      expect(result.outputs).toEqual([{ port: scenario.port, items: [{ customer: "Ada" }] }]);
       expect(result.detail).toBe(`switch ${scenario.port}`);
     }
   });
@@ -173,9 +171,7 @@ describe("core node parameters", () => {
   it("rejects empty and control-character output port names", async () => {
     for (const port of ["", "  ", "bad\nport"]) {
       await expect(
-        executor("switch")(
-          context({ value: "paid", cases: [{ value: "paid", port }] }),
-        ),
+        executor("switch")(context({ value: "paid", cases: [{ value: "paid", port }] })),
       ).rejects.toThrow(/port/i);
     }
   });
