@@ -28,7 +28,7 @@ first matching named port, or to `default` when no case matches.
 ### Checkpoint: Node behavior
 
 - [x] Unit tests cover scalar matches, type sensitivity, defaults, shared ports,
-  and invalid/ambiguous configuration.
+      and invalid/ambiguous configuration.
 - [ ] Existing core node behavior remains unchanged.
 
 ### Phase 2: Engine integration
@@ -38,25 +38,25 @@ first matching named port, or to `default` when no case matches.
 ### Checkpoint: Integration
 
 - [x] The inline trace snapshot demonstrates only the selected downstream path
-  executes and output items retain their values.
+      executes and output items retain their values.
 
 ### Phase 3: Decision and docs
 
-- [ ] Task 3: Record the matching contract and add the Switch node guide.
+- [x] Task 3: Record the matching contract and add the Switch node guide.
 
 ### Checkpoint: Complete
 
 - [ ] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
-  pass; deleted-test guard compares against `main`.
+      pass; deleted-test guard compares against `main`.
 - [ ] Diff reviewed and ready for PR.
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Object/array equality is unclear and potentially surprising. | Medium | Restrict selected and case values to JSON scalars. |
-| Duplicate case values would make routing order-dependent. | Medium | Reject duplicate values; retain order for distinct cases. |
-| Custom port names contain control characters or whitespace-only values. | Low | Validate names before returning the output. |
+| Risk                                                                    | Impact | Mitigation                                                |
+| ----------------------------------------------------------------------- | ------ | --------------------------------------------------------- |
+| Object/array equality is unclear and potentially surprising.            | Medium | Restrict selected and case values to JSON scalars.        |
+| Duplicate case values would make routing order-dependent.               | Medium | Reject duplicate values; retain order for distinct cases. |
+| Custom port names contain control characters or whitespace-only values. | Low    | Validate names before returning the output.               |
 
 ## Open Questions
 

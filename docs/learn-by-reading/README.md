@@ -18,8 +18,10 @@ each step builds on the previous one.
    — parser and evaluator cases for the safe field language.
 8. [`packages/nodes-core/src/http.test.ts`](../../packages/nodes-core/src/http.test.ts)
    — a flaky HTTP request, fake ports, retry attempts, and a readable trace.
-9. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
-   engine is tested.
+9. [`packages/nodes-core/src/switch.test.ts`](../../packages/nodes-core/src/switch.test.ts)
+   — exact scalar matching, named ports, and a readable branch trace.
+10. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
+    engine is tested.
 
 ## Exercises
 
@@ -31,9 +33,10 @@ each step builds on the previous one.
 ## What comes next
 
 Stage 1 adds the pure engine, a deterministic simulation, built-in nodes, safe
-field expressions, bounded retries, an HTTP Request node, and a readable
-execution trace. The CLI,
+field expressions, bounded retries, HTTP requests, per-node timeouts, a Switch
+node, and readable execution traces. The CLI,
 [`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts),
 [`expression.test.ts`](../../packages/engine/src/expression.test.ts), and
-[`http.test.ts`](../../packages/nodes-core/src/http.test.ts) show the current
-slice.
+[`http.test.ts`](../../packages/nodes-core/src/http.test.ts) plus
+[`switch.test.ts`](../../packages/nodes-core/src/switch.test.ts) show the
+current slice.
