@@ -6,7 +6,7 @@ import { coreNodes } from "./index";
 
 const clock: Clock = { now: () => 0 };
 
-const triageWorkflow = (condition: boolean): ReturnType<typeof parseWorkflow> =>
+const triageWorkflow = (condition: boolean | string): ReturnType<typeof parseWorkflow> =>
   parseWorkflow({
     id: "triage",
     name: "Triage",
@@ -42,6 +42,21 @@ describe("triage workflow", () => {
       t=0ms     decide       ok    branch true
       t=0ms     approve      ok    1 field"
     `);
+    expect(result.outputs).toEqual([
+      { customer: "Ada", plan: "trial", status: "ready", route: "approve" },
+    ]);
+  });
+
+  it("evaluates an expression in the IF condition for each item", async () => {
+    const result = await runWorkflow({
+      workflow: triageWorkflow("{{ $json.plan === 'trial' }}"),
+      input: { customer: "Ada", plan: "trial" },
+      nodes: coreNodes,
+      ports: { clock },
+      signal: new AbortController().signal,
+    });
+
+    expect(result.status).toBe("ok");
     expect(result.outputs).toEqual([
       { customer: "Ada", plan: "trial", status: "ready", route: "approve" },
     ]);

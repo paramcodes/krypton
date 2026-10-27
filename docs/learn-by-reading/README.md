@@ -14,7 +14,9 @@ each step builds on the previous one.
    the smallest example of an expect test.
 6. [`packages/nodes-core/src/triage.test.ts`](../../packages/nodes-core/src/triage.test.ts)
    — a full expect test with the real nodes, an item queue, and branch ports.
-7. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
+7. [`packages/engine/src/expression.test.ts`](../../packages/engine/src/expression.test.ts)
+   — parser and evaluator cases for the safe field language.
+8. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
    engine is tested.
 
 ## Exercises
@@ -26,6 +28,8 @@ each step builds on the previous one.
 
 ## What comes next
 
-Stage 1 adds the pure engine, a deterministic simulation, the first nodes, and a
-readable execution trace. The first slice is in place: the CLI and
-[`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts) show a real run.
+Stage 1 adds the pure engine, a deterministic simulation, the first nodes, safe
+field expressions, and a readable execution trace. The current slice is in
+place: the CLI, [`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts),
+and [`expression.test.ts`](../../packages/engine/src/expression.test.ts) show a
+real run and the expression grammar.

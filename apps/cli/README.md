@@ -12,6 +12,12 @@ The workflow and input are parsed at the boundary. Invalid JSON, unknown node
 references, and node parameter errors fail with a non-zero exit code. Each JSON
 file is capped at 1 MiB.
 
+Node parameters may contain whole-field expressions such as
+`"{{ $json.plan === 'trial' }}"`. Expressions are compiled before the run and
+evaluated per item; see [`docs/expressions.md`](../../docs/expressions.md) for
+the syntax, limits, and supported references. The example workflow records
+`expressionVersion: 1` and uses an expression for its IF condition.
+
 The CLI runs under Node 26's TypeScript support, so workspace source imports use
 explicit `.ts` extensions. The repo is typechecked with `noEmit`; a future emit
 step will need a bundler or `rewriteRelativeImportExtensions`.

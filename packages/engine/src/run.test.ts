@@ -23,8 +23,24 @@ const tag: NodeExecutor = async ({ item, nodeId }) => ({
   outputs: [{ port: "main", items: [{ ...item, start: nodeId }] }],
 });
 
+const parameterEcho: NodeExecutor = async ({ item, parameters }) => ({
+  outputs: [{ port: "main", items: [{ ...item, parameters }] }],
+});
+
 const fanOut: NodeExecutor = async ({ item }) => ({
   outputs: [{ port: "main", items: [item, { ...item, copy: true }] }],
+});
+
+const fanOutValues: NodeExecutor = async ({ item }) => ({
+  outputs: [
+    {
+      port: "main",
+      items: [
+        { ...item, value: 1 },
+        { ...item, value: 2 },
+      ],
+    },
+  ],
 });
 
 const split: NodeExecutor = async ({ item }) => ({
@@ -54,7 +70,9 @@ const nodes: NodeRegistry = {
   empty,
   explode,
   tag,
+  "parameter-echo": parameterEcho,
   "fan-out": fanOut,
+  "fan-out-values": fanOutValues,
   split,
   "throw-plain": throwPlain,
   "invalid-result": invalidResult,
@@ -132,6 +150,156 @@ describe("runWorkflow", () => {
 
     expect(result.status).toBe("fail");
     expect(result.trace.at(-1)?.detail).toBe('Unknown node type "toString".');
+  });
+
+  it("resolves node parameters per item from $json and $input", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "expressions",
+        name: "Expressions",
+        nodes: [
+          {
+            id: "start",
+            type: "parameter-echo",
+            parameters: {
+              name: "{{ $json.customer }}",
+              plan: "{{ $input.plan }}",
+              count: "{{ $json.tags[0] }}",
+              nested: { active: "{{ $input.plan === 'trial' }}" },
+            },
+          },
+        ],
+      }),
+      input: { customer: "Ada", plan: "trial", tags: ["web"] },
+      nodes,
+      ports: { clock },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toEqual([
+      {
+        customer: "Ada",
+        plan: "trial",
+        tags: ["web"],
+        parameters: {
+          name: "Ada",
+          plan: "trial",
+          count: "web",
+          nested: { active: true },
+        },
+      },
+    ]);
+  });
+
+  it("evaluates parameters for every queued item with a stable $input", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "per-item-expressions",
+        name: "Per-item expressions",
+        nodes: [
+          { id: "start", type: "fan-out-values" },
+          {
+            id: "echo",
+            type: "parameter-echo",
+            parameters: {
+              value: "{{ $json.value }}",
+              source: "{{ $input.source }}",
+            },
+          },
+        ],
+        connections: [{ from: "start", to: "echo" }],
+      }),
+      input: { source: "web" },
+      nodes,
+      ports: { clock },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toEqual([
+      {
+        source: "web",
+        value: 1,
+        parameters: { value: 1, source: "web" },
+      },
+      {
+        source: "web",
+        value: 2,
+        parameters: { value: 2, source: "web" },
+      },
+    ]);
+  });
+
+  it("compiles every node's parameters before executing any node", async () => {
+    const executed: string[] = [];
+    const tracking: NodeExecutor = async ({ item, nodeId }) => {
+      executed.push(nodeId);
+      return { outputs: [{ port: "main", items: [item] }] };
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "preflight",
+        name: "Preflight",
+        nodes: [
+          { id: "start", type: "tracking" },
+          { id: "bad", type: "tracking", parameters: { value: "{{ $json. }}" } },
+        ],
+        connections: [{ from: "start", to: "bad" }],
+      }),
+      input: {},
+      nodes: { ...nodes, tracking },
+      ports: { clock },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(executed).toEqual([]);
+    expect(result.trace).toHaveLength(1);
+    expect(result.trace[0]).toMatchObject({ node: "bad", status: "fail" });
+    expect(result.trace[0]?.detail).toContain("Expected a field name");
+  });
+
+  it("fails the node with a typed error when an expression cannot be evaluated", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "evaluation-error",
+        name: "Evaluation error",
+        nodes: [
+          { id: "start", type: "manual-trigger" },
+          { id: "bad", type: "parameter-echo", parameters: { value: "{{ $json.missing }}" } },
+        ],
+        connections: [{ from: "start", to: "bad" }],
+      }),
+      input: {},
+      nodes,
+      ports: { clock },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.trace.map((line) => line.node)).toEqual(["start", "bad"]);
+    expect(result.trace.at(-1)?.detail).toContain("$.parameters.value:");
+    expect(result.trace.at(-1)?.detail).toContain('Unknown field "missing"');
+  });
+
+  it("rejects an unsupported expression version before executing nodes", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "version",
+        name: "Version",
+        expressionVersion: 2,
+        nodes: [{ id: "start", type: "manual-trigger" }],
+      }),
+      input: {},
+      nodes,
+      ports: { clock },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.trace[0]?.detail).toBe("Unsupported expression version 2.");
   });
 
   it("fails when an executor returns an invalid result", async () => {
@@ -521,6 +689,7 @@ describe("runWorkflow", () => {
     const malformed: Workflow = {
       id: asWorkflowId("malformed"),
       name: "Malformed",
+      expressionVersion: 1,
       nodes: [
         {
           id: asNodeId("start"),

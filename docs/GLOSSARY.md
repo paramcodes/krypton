@@ -19,7 +19,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Port             | An interface the engine depends on for an external effect, such as time, randomness, HTTP, storage, or secrets. |
 | Simulation       | A deterministic test run that uses fake ports instead of real time, network, or storage.                        |
 | Expect test      | A readable end-to-end test that runs the engine and snapshots the human-readable trace inline.                  |
-| Expression       | A small, sandboxed value reference used inside a node field, without allowing arbitrary code.                   |
+| Expression       | A whole-field `{{ expression }}` value reference evaluated per item, with no arbitrary code, I/O, or secrets.   |
 | Credential       | An encrypted secret attached to a node and never returned by the API.                                           |
 | Sandbox          | An isolated runtime for user code, separate from the API and worker.                                            |
 | Clean-room       | Built from public behaviour and documentation, without copying source, assets, schemas, or branding.            |

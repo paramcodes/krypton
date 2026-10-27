@@ -6,8 +6,8 @@ control, or a clean interface.
 
 Status: **Stage 1 — pure engine and terminal runner in progress**. The repo has
 the monorepo, quality gates, guardrails, architecture decisions, and agent setup.
-The engine can run a validated workflow from JSON with the first built-in nodes;
-the API, editor, and worker are later stages.
+The engine can run a validated workflow from JSON with the first built-in nodes
+and safe whole-field expressions; the API, editor, and worker are later stages.
 
 ## Why
 
@@ -95,6 +95,7 @@ are enforced. The guardrail scripts have temp-repo regression tests in
 ## Docs
 
 - [`docs/architecture/overview.md`](docs/architecture/overview.md)
+- [`docs/expressions.md`](docs/expressions.md)
 - [`docs/learn-by-reading/README.md`](docs/learn-by-reading/README.md)
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md)
 - [`docs/adr/`](docs/adr/README.md)

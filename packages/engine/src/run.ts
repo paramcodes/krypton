@@ -1,5 +1,11 @@
 import type { Connection, JsonObject, NodeInstance, Workflow } from "@krypton/schema";
 
+import {
+  compileParameters,
+  evaluateParameters,
+  ExpressionError,
+  type CompiledParameters,
+} from "./expression.ts";
 import { isNodeExecutionResult, type NodeOutput, type NodeRegistry } from "./node.ts";
 import type { EnginePorts } from "./ports.ts";
 import type { TraceLine } from "./trace.ts";
@@ -7,6 +13,7 @@ import type { TraceLine } from "./trace.ts";
 const DEFAULT_MAX_STEPS = 10_000;
 const DEFAULT_MAX_QUEUED_ITEMS = 10_000;
 const DEFAULT_PORT = "main";
+const SUPPORTED_EXPRESSION_VERSION = 1;
 
 export type RunStatus = "ok" | "fail";
 
@@ -75,6 +82,24 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
     return fail("workflow", "Run cancelled.");
   }
 
+  if (options.workflow.expressionVersion !== SUPPORTED_EXPRESSION_VERSION) {
+    return fail(
+      "workflow",
+      `Unsupported expression version ${options.workflow.expressionVersion}.`,
+    );
+  }
+
+  const compiledParameters = new Map<NodeInstance["id"], CompiledParameters>();
+  for (const node of options.workflow.nodes) {
+    try {
+      compiledParameters.set(node.id, compileParameters(node.parameters, "$.parameters"));
+    } catch (error) {
+      const detail =
+        error instanceof ExpressionError ? error.message : "Could not compile node parameters.";
+      return fail(node.id, detail);
+    }
+  }
+
   const nodesById = new Map<NodeInstance["id"], NodeInstance>();
   const incomingCounts = new Map<NodeInstance["id"], number>();
   for (const node of options.workflow.nodes) {
@@ -129,13 +154,27 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
       return fail(entry.node.id, `Unknown node type "${entry.node.type}".`);
     }
 
+    const compiled = compiledParameters.get(entry.node.id);
+    if (compiled === undefined) {
+      return fail(entry.node.id, "Node parameters were not compiled.");
+    }
+
+    let parameters: JsonObject;
+    try {
+      parameters = evaluateParameters(compiled, { item: entry.item, input: options.input });
+    } catch (error) {
+      const detail =
+        error instanceof ExpressionError ? error.message : "Could not evaluate node parameters.";
+      return fail(entry.node.id, detail);
+    }
+
     let rawResult: unknown;
     try {
       rawResult = await executor({
         nodeId: entry.node.id,
         nodeType: entry.node.type,
         item: entry.item,
-        parameters: entry.node.parameters,
+        parameters,
         ports: options.ports,
         signal: options.signal,
       });

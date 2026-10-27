@@ -95,18 +95,18 @@ The exact SQL, indexes, and migration tool are decided in Stage 2.
 
 ## Stage map
 
-| Stage | Outcome                                            |
-| ----- | -------------------------------------------------- |
-| 0     | Foundation, quality gates, guardrails, ADRs        |
-| 1     | Pure engine, simulation, expect tests, first nodes |
-| 2     | API, Postgres, auth, workflow persistence          |
-| 3     | React editor, design tokens, accessibility         |
-| 4     | Triggers, queue, durable runs, recovery            |
-| 5     | Node SDK, credentials, core integrations           |
-| 6     | Look and feel polish                               |
-| 7     | Security, performance, accessibility hardening     |
-| 8     | AI nodes (optional)                                |
-| 9     | Docs site, packaging, release                      |
+| Stage | Outcome                                                         |
+| ----- | --------------------------------------------------------------- |
+| 0     | Foundation, quality gates, guardrails, ADRs                     |
+| 1     | Pure engine, expressions, simulation, expect tests, first nodes |
+| 2     | API, Postgres, auth, workflow persistence                       |
+| 3     | React editor, design tokens, accessibility                      |
+| 4     | Triggers, queue, durable runs, recovery                         |
+| 5     | Node SDK, credentials, core integrations                        |
+| 6     | Look and feel polish                                            |
+| 7     | Security, performance, accessibility hardening                  |
+| 8     | AI nodes (optional)                                             |
+| 9     | Docs site, packaging, release                                   |
 
 The detailed exit criteria are in
 [`research/06-roadmap.md`](../../research/06-roadmap.md).
