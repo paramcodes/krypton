@@ -15,6 +15,8 @@ import {
   type JsonValue,
 } from "@krypton/schema";
 
+import { DEFAULT_HTTP_MAX_RESPONSE_BYTES, DEFAULT_HTTP_TIMEOUT_MS } from "./defaults.ts";
+
 const manualTrigger: NodeExecutor = async ({ item }) => ({
   outputs: [{ port: "main", items: [item] }],
 });
@@ -122,8 +124,6 @@ const httpMethods: readonly HttpMethod[] = [
 ];
 const headerNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 const retryableStatuses = new Set([408, 425, 429]);
-const defaultTimeoutMs = 30_000;
-const defaultMaxResponseBytes = 1_000_000;
 
 const isHttpMethod = (value: string): value is HttpMethod =>
   httpMethods.some((method) => method === value);
@@ -275,13 +275,13 @@ const httpRequest: NodeExecutor = async ({ item, parameters, ports, signal }) =>
   const timeoutMs = readBoundedInteger(
     parameters["timeoutMs"],
     "timeoutMs",
-    defaultTimeoutMs,
+    DEFAULT_HTTP_TIMEOUT_MS,
     MAX_HTTP_TIMEOUT_MS,
   );
   const maxResponseBytes = readBoundedInteger(
     parameters["maxResponseBytes"],
     "maxResponseBytes",
-    defaultMaxResponseBytes,
+    DEFAULT_HTTP_MAX_RESPONSE_BYTES,
     MAX_HTTP_RESPONSE_BYTES,
   );
   const serializedBody = serializeBody(parameters["body"]);
@@ -359,3 +359,5 @@ export const coreNodes: Readonly<Record<string, NodeExecutor>> = {
   switch: switchNode,
   "http-request": httpRequest,
 };
+
+export { coreNodeCatalog } from "./catalog.ts";

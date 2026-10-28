@@ -62,3 +62,4 @@ Name the evidence or event that should reopen this decision.
 | [0015](0015-node-execution-timeouts.md)     | Generic per-node execution timeouts                           | accepted |
 | [0016](0016-switch-node.md)                 | Switch node: strict scalar matching over named ports          | accepted |
 | [0017](0017-bun-typechecker.md)             | Bun's native checker for the fast gate, pinned tsc for build  | accepted |
+| [0018](0018-node-catalog.md)                | Node catalog and UI parameter metadata                        | accepted |

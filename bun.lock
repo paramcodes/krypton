@@ -79,6 +79,9 @@
       "dependencies": {
         "@krypton/schema": "workspace:*",
       },
+      "devDependencies": {
+        "vitest": "5.0.4",
+      },
     },
     "packages/nodes-core": {
       "name": "@krypton/nodes-core",

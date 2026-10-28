@@ -7,6 +7,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Workflow         | A saved graph of nodes and connections that runs as one unit.                                                   |
 | Node             | One step in a workflow, with a typed input and output.                                                          |
 | Node definition  | The code and metadata that implement a node type.                                                               |
+| Node catalog     | The editor-facing description of a node type's ports and parameter fields.                                      |
 | Node instance    | A node placed in a workflow, with its own parameters and position.                                              |
 | Connection       | A directed edge that passes items from one node to another.                                                     |
 | Item             | One JSON object flowing through the graph.                                                                      |
