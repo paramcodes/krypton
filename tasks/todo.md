@@ -131,12 +131,12 @@ deleted-test guard passed.
 
 - [x] The diff is small enough for a human to walk through.
 - [x] The review confirms boundaries, tests, docs, and AGPL compatibility.
-- [ ] A PR is opened on `stage-1-graph-property-test`.
-- [ ] No merge to `main` without explicit permission.
+- [x] A PR is opened on `stage-1-graph-property-test`.
+- [x] No merge to `main` without explicit permission.
 
-**Verification:** Review findings and PR link. The independent review required
-field-specific schema assertions; the final test asserts the exact path and
-message for every mutation kind.
+**Verification:** Review findings and PR link: [#11](https://github.com/paramcodes/krypton/pull/11).
+The independent review required field-specific schema assertions; the final test
+asserts the exact path and message for every mutation kind.
 
 **Dependencies:** Task 5.
 
