@@ -11,6 +11,7 @@ Start here:
 - [Node timeout specification](specs/node-timeouts.md) — the per-attempt
   execution deadline contract.
 - [Switch node](nodes/switch.md) — exact scalar matching over named output ports.
+- [Merge node](nodes/merge.md) — append-only fan-in without a wait barrier.
 - [Node catalog](nodes/catalog.md) — the port and parameter metadata contract
   for the future editor.
 - [Architecture decision records](adr/README.md) — why the foundation looks like

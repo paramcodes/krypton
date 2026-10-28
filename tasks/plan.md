@@ -1,72 +1,59 @@
-# Implementation Plan: Node catalog
+# Implementation Plan: Merge node
 
 ## Overview
 
-Add a typed, validated catalog of node ports and parameter fields in
-`@krypton/node-sdk`, populate it for every core node, and expose it through
-`krypton nodes [--json]`. This is the metadata contract for the future editor,
-not an editor implementation.
+Add an append-only `merge` node to `packages/nodes-core`: one `main` input that
+accepts any number of branches, one `main` output, no parameters, and unchanged
+items in deterministic queue order. The engine is not changed.
 
 ## Architecture Decisions
 
-- Keep metadata in `node-sdk`; `engine` remains unaware of built-in node types.
-- Use a small discriminated union instead of JSON Schema or a new dependency.
-  It covers nested Switch cases without adopting a general schema vocabulary.
-- Keep executors authoritative for resolved parameter validation. The catalog
-  describes shape for forms.
-- Enforce catalog/registry completeness with a test in `nodes-core`.
-- Validate catalog input at the boundary so third-party catalogs can reuse the
-  parser later.
+- Append now; do not pretend the engine has a wait-for-all barrier.
+- Keep Merge as a normal executor; no engine special-casing.
+- Document the absence of buffering, combining, and branch synchronization.
+- Add the catalog entry in the same change so the metadata contract stays
+  complete.
 
 ## Task List
 
-### Phase 1: Catalog contract
+### Phase 1: Contract
 
-- [x] Task 1: Add catalog types and parser with failing-first tests.
+- [x] Task 1: Write the Merge spec and ADR 0019.
 
 ### Checkpoint: Contract
 
-- [x] Valid entries parse and round-trip through JSON.
-- [x] Duplicate types, ports, keys, invalid defaults, and malformed fields fail.
+- [x] The spec says append-only, no barrier, and queue-order semantics.
+- [x] The ADR records why wait-for-all is deferred.
 
-### Phase 2: Core metadata
+### Phase 2: Implementation
 
-- [x] Task 2: Add `coreNodeCatalog` for all current core nodes.
+- [x] Task 2: Add failing-first tests and the Merge executor.
 
-### Checkpoint: Core catalog
+### Checkpoint: Behavior
 
-- [x] Every executor has exactly one entry and every entry parses.
-- [x] Switch declares its fixed `default` port and dynamic case ports.
+- [x] Two emitting branches produce items in deterministic order.
+- [x] A Switch branch test proves Merge does not wait for an unselected branch.
+- [x] Items are unchanged.
 
-### Phase 3: Consumption
+### Phase 3: Metadata and docs
 
-- [x] Task 3: Add `krypton nodes [--json]` and tests.
-
-### Checkpoint: CLI
-
-- [x] Readable output lists nodes, ports, and parameters.
-- [x] `--json` output parses and matches the catalog.
-- [x] Unknown options fail with usage.
-
-### Phase 4: Record
-
-- [x] Task 4: Add ADR 0018 and catalog documentation.
+- [x] Task 3: Add the `merge` catalog entry and CLI coverage.
+- [x] Task 4: Add the node guide and index links.
 
 ### Checkpoint: Complete
 
-- [x] Documentation links resolve.
 - [x] `BASE_SHA=main bun run check`, `build`, `test:coverage`, and `e2e` pass.
 - [x] Diff reviewed and ready for PR.
 
 ## Risks and Mitigations
 
-| Risk                                               | Impact | Mitigation                                                       |
-| -------------------------------------------------- | ------ | ---------------------------------------------------------------- |
-| Catalog metadata drifts from executor behavior.    | Medium | Registry completeness test; executors stay authoritative.        |
-| A field kind cannot express a future node.         | Low    | Extend the union with the first consumer, not speculatively.     |
-| Users expect an editor from "UI parameter schema". | Medium | Document that this is the editor contract, not React components. |
-| Third-party catalogs inject unsafe text.           | Low    | Parse at the boundary and reject control characters.             |
+| Risk                                         | Impact | Mitigation                                                        |
+| -------------------------------------------- | ------ | ----------------------------------------------------------------- |
+| Users assume Merge waits for all branches.   | High   | Name it append-only in the spec, guide, ADR, and trace detail.    |
+| Merge is mistaken for a no-op with no value. | Medium | Use it as an explicit join marker and future mode home; document. |
+| Branch order is assumed to be grouped.       | Medium | Promise FIFO queue order, not grouping.                           |
+| A future barrier needs a breaking change.    | Low    | Add a mode or a separate node; keep append behavior stable.       |
 
 ## Open Questions
 
-- None for this slice. A real editor remains Stage 3 work.
+- None for append mode. Wait-for-all remains a separate engine slice.
