@@ -9,6 +9,8 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Node definition  | The code and metadata that implement a node type.                                                               |
 | Node catalog     | The editor-facing description of a node type's ports and parameter fields.                                      |
 | Append merge     | A fan-in node that passes each incoming item through in queue order without waiting for other branches.         |
+| Loop over items  | A node that runs a connected body once per array element and collects each returned item in `results`.          |
+| Loop state       | The reserved `__krypton` item field that carries iteration position and partial results through the engine.     |
 | Node instance    | A node placed in a workflow, with its own parameters and position.                                              |
 | Connection       | A directed edge that passes items from one node to another.                                                     |
 | Item             | One JSON object flowing through the graph.                                                                      |

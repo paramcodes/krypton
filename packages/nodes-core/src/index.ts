@@ -16,10 +16,18 @@ import {
 } from "@krypton/schema";
 
 import { DEFAULT_HTTP_MAX_RESPONSE_BYTES, DEFAULT_HTTP_TIMEOUT_MS } from "./defaults.ts";
+import { INTERNAL_STATE_KEY, loopOverItems } from "./loop.ts";
 
-const manualTrigger: NodeExecutor = async ({ item }) => ({
-  outputs: [{ port: "main", items: [item] }],
-});
+const manualTrigger: NodeExecutor = async ({ item }) => {
+  // Run input is external. Strip reserved loop state so a forged continuation
+  // cannot skip the loop body. Other trigger types must do the same.
+  const input = Object.hasOwn(item, INTERNAL_STATE_KEY)
+    ? Object.fromEntries(Object.entries(item).filter(([key]) => key !== INTERNAL_STATE_KEY))
+    : item;
+  return {
+    outputs: [{ port: "main", items: [input] }],
+  };
+};
 
 const merge: NodeExecutor = async ({ item }) => ({
   outputs: [{ port: "main", items: [item] }],
@@ -363,6 +371,7 @@ export const coreNodes: Readonly<Record<string, NodeExecutor>> = {
   if: branch,
   switch: switchNode,
   merge,
+  loop: loopOverItems,
   "http-request": httpRequest,
 };
 

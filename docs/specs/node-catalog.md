@@ -85,6 +85,10 @@ The catalog covers the current core nodes:
 - `if` — `true` and `false` outputs; boolean `condition`.
 - `switch` — fixed `default` output plus dynamic case ports; scalar `value` and
   a list of `{ value, port }` cases.
+- `merge` — one input and one `main` output; appends incoming items in queue
+  order without a wait barrier.
+- `loop` — one input, `loop` and `done` outputs; required `items` JSON array and
+  an optional integer `maxItems`.
 - `http-request` — URL, method, headers, body, timeout, and response-size
   fields.
 

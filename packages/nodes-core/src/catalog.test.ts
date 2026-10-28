@@ -1,6 +1,7 @@
 import { parseNodeCatalog } from "@krypton/node-sdk";
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_LOOP_ITEM_LIMIT, MAX_LOOP_ITEM_LIMIT } from "./defaults";
 import { coreNodeCatalog, coreNodes } from "./index";
 
 const entry = (type: string) => {
@@ -25,7 +26,7 @@ describe("core node catalog", () => {
     expect(parseNodeCatalog(roundTrip)).toEqual(coreNodeCatalog);
   });
 
-  it("declares trigger, branch, switch, and HTTP metadata", () => {
+  it("declares trigger, branch, switch, merge, loop, and HTTP metadata", () => {
     const trigger = entry("manual-trigger");
     expect(trigger.category).toBe("trigger");
     expect(trigger.inputs).toEqual([]);
@@ -53,6 +54,22 @@ describe("core node catalog", () => {
     expect(merge.inputs[0]?.description).toContain("any number");
     expect(merge.outputs.map((port) => port.name)).toEqual(["main"]);
     expect(merge.parameters).toEqual([]);
+
+    const loop = entry("loop");
+    expect(loop.category).toBe("flow");
+    expect(loop.inputs.map((port) => port.name)).toEqual(["main"]);
+    expect(loop.outputs.map((port) => port.name)).toEqual(["loop", "done"]);
+    expect(loop.parameters).toMatchObject([
+      { key: "items", kind: "json", required: true },
+      {
+        key: "maxItems",
+        kind: "number",
+        integer: true,
+        minimum: 1,
+        maximum: MAX_LOOP_ITEM_LIMIT,
+        defaultValue: DEFAULT_LOOP_ITEM_LIMIT,
+      },
+    ]);
 
     const http = entry("http-request");
     expect(http.category).toBe("network");
