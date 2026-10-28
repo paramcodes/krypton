@@ -4,6 +4,9 @@
 - Date: 2026-10-27
 - Deciders: project owner, node implementation owner
 
+> [ADR 0019](0019-merge-node.md) and [ADR 0020](0020-loop-node.md) later add
+> Merge and Loop over items. True joins and error routes remain separate work.
+
 ## Context
 
 The IF node routes on one boolean condition. Workflows also need more than two
@@ -51,7 +54,8 @@ does not provide.
 - Case values and ports are validated at execution time, after expressions are
   resolved, so expression-produced duplicates or composite values fail visibly.
 - The `default` output is stable and requires no configurable fallback field.
-- Merge/join, Loop, error routes, and UI-generated schemas remain separate work.
+- Merge and Loop are added by ADRs 0019 and 0020; true joins, error routes, and
+  UI-generated schemas remain separate work.
 
 ## Revisit when
 

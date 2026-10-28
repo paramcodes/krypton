@@ -1,7 +1,12 @@
 import { MAX_HTTP_RESPONSE_BYTES, MAX_HTTP_TIMEOUT_MS } from "@krypton/engine";
 import type { NodeCatalogEntry } from "@krypton/node-sdk";
 
-import { DEFAULT_HTTP_MAX_RESPONSE_BYTES, DEFAULT_HTTP_TIMEOUT_MS } from "./defaults.ts";
+import {
+  DEFAULT_HTTP_MAX_RESPONSE_BYTES,
+  DEFAULT_HTTP_TIMEOUT_MS,
+  DEFAULT_LOOP_ITEM_LIMIT,
+  MAX_LOOP_ITEM_LIMIT,
+} from "./defaults.ts";
 
 /**
  * Editor-facing metadata for the built-in nodes. Executors remain authoritative
@@ -11,7 +16,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
   {
     type: "manual-trigger",
     label: "Manual Trigger",
-    description: "Starts a run with the workflow input item.",
+    description: "Starts a run with the workflow input item, stripping reserved internal state.",
     category: "trigger",
     inputs: [],
     outputs: [{ name: "main", label: "Main" }],
@@ -115,6 +120,52 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     ],
     outputs: [{ name: "main", label: "Main" }],
     parameters: [],
+  },
+  {
+    type: "loop",
+    label: "Loop Over Items",
+    description:
+      "Iterates an array, runs the connected body for each item, then emits the collected results.",
+    category: "flow",
+    inputs: [
+      {
+        name: "main",
+        label: "Main",
+        description: "Initial item and body returns.",
+      },
+    ],
+    outputs: [
+      {
+        name: "loop",
+        label: "Loop",
+        description: "Current item for the body.",
+      },
+      {
+        name: "done",
+        label: "Done",
+        description: "Original item plus collected results.",
+      },
+    ],
+    parameters: [
+      {
+        key: "items",
+        label: "Items",
+        description:
+          "Array of JSON objects to iterate. Keep the source field on the item through the body.",
+        kind: "json",
+        required: true,
+      },
+      {
+        key: "maxItems",
+        label: "Max items",
+        description: "Maximum iterations before the node fails.",
+        kind: "number",
+        integer: true,
+        minimum: 1,
+        maximum: MAX_LOOP_ITEM_LIMIT,
+        defaultValue: DEFAULT_LOOP_ITEM_LIMIT,
+      },
+    ],
   },
   {
     type: "http-request",

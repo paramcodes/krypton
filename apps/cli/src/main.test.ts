@@ -44,6 +44,7 @@ describe("krypton CLI", () => {
     expect(result.stdout).toContain("http-request — HTTP Request [network]");
     expect(result.stdout).toContain("switch — Switch [flow]");
     expect(result.stdout).toContain("merge — Merge [flow]");
+    expect(result.stdout).toContain("loop — Loop Over Items [flow]");
     expect(result.stdout).toContain("cases (list, required)");
     expect(result.stdout).toContain("Case ports");
   });

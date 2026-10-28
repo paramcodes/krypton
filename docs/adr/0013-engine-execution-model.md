@@ -5,8 +5,10 @@
 - Deciders: project owner, engine implementation owner
 
 > [ADR 0014](0014-http-request-and-retries.md) adds the `Http` port, bounded
-> retries, and HTTP request timeouts. The queue model and the deferral of joins,
-> loops, and error routes in this decision still stand.
+> retries, and HTTP request timeouts. [ADR 0019](0019-merge-node.md) adds an
+> append-only Merge, and [ADR 0020](0020-loop-node.md) adds a Loop over items
+> node using the same queue. The queue model stands; true join/wait semantics
+> and error routes remain deferred.
 > [ADR 0015](0015-node-execution-timeouts.md) adds a generic timeout for one
 > node executor attempt.
 > [ADR 0016](0016-switch-node.md) adds a built-in Switch that selects among the
@@ -53,8 +55,9 @@ registry.
   cancelled signal, or a run that exceeds a budget. Cancellation is checked
   before and after each executor; a cancelled result is not processed. The
   default step budget is 10,000 executions and the default queued-item budget is
-  10,000 entries. Both are configurable in the internal run options. Retries,
-  error ports, joins, and loop semantics arrive with their own decisions.
+  10,000 entries. Both are configurable in the internal run options. Retries and
+  timeouts have their own ADRs; Merge and Loop add node-level semantics over the
+  same queue. True joins and error routes remain deferred.
 - The first slice has only the `Clock` port. `Random`, `Http`, `RunStore`, and
   `Secrets` are added when their first consumer exists, so the contract stays
   honest.
@@ -70,22 +73,25 @@ registry.
 - **Switch on built-in node types inside the engine** — convenient, but it
   reverses the dependency boundary and makes third-party nodes a special case.
 - **A whole-graph step function with merge semantics from day one** — more
-  capable, but the join, loop, and retry rules are not decided yet.
+  capable, but join semantics were not decided then; Merge, Loop, and retries
+  later got their own ADRs.
 
 ## Consequences
 
-- A node may execute more than once in a run, once per incoming item. Join and
-  merge behaviour is intentionally undefined in this slice.
+- A node may execute more than once in a run, once per incoming item. Append
+  Merge (ADR 0019) defines queue-order fan-in; true wait-barrier join semantics
+  remain undefined.
 - Branching is expressed by connections, not by node-specific engine code.
 - The engine is easy to test with fake node executors and a fake clock.
 - Cycles can exhaust the step budget. That is a visible failure, not a silent
-  hang; explicit loop semantics must come with a later ADR.
-- Failures stop the run in this slice. Error routes and bounded retries need the
-  journal and retry design before they can be added.
+  hang; ADR 0020 adds an explicit Loop over items node, while unrelated cycles
+  remain bounded only by the budget.
+- Failures stop the run in this slice. Error routes need the journal and retry
+  design before they can be added; bounded retries are added by ADR 0014.
 - The journal, persistence, and the remaining ports are Stage 1/Stage 4 work.
 
 ## Revisit when
 
-- A workflow needs joins, loops, error routes, or bounded retries.
+- A workflow needs true joins, error routes, or bounded retries.
 - The journal needs durable checkpoints or replay.
 - A real node needs a port that the engine does not yet expose.
