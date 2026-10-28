@@ -80,17 +80,22 @@ data behind the API preserves the existing package boundary.
 
 The catalog covers the current core nodes:
 
-- `manual-trigger` — trigger, no inputs, one `main` output.
-- `set` — one input and one `main` output; `values` key-value field.
-- `if` — `true` and `false` outputs; boolean `condition`.
-- `switch` — fixed `default` output plus dynamic case ports; scalar `value` and
-  a list of `{ value, port }` cases.
-- `merge` — one input and one `main` output; appends incoming items in queue
+- `manual-trigger` — trigger, no inputs, `main` and standard `error` outputs.
+- `set` — one input and `main`/`error` outputs; `values` key-value field.
+- `if` — `true`, `false`, and `error` outputs; boolean `condition`.
+- `switch` — fixed `default` and `error` outputs plus dynamic case ports; scalar
+  `value` and a list of `{ value, port }` cases.
+- `merge` — one input and `main`/`error` outputs; appends incoming items in queue
   order without a wait barrier.
-- `loop` — one input, `loop` and `done` outputs; required `items` JSON array and
-  an optional integer `maxItems`.
-- `http-request` — URL, method, headers, body, timeout, and response-size
-  fields.
+- `loop` — one input, `loop`, `done`, and `error` outputs; required `items` JSON
+  array and an optional integer `maxItems`.
+- `http-request` — one input and `main`/`error` outputs; URL, method, headers,
+  body, timeout, and response-size fields.
+
+The standard `error` output is always present, but it only receives an item when
+the node instance's `errorPolicy` is `route` and the node fails. See
+[ADR 0021](../adr/0021-node-error-routes.md) for the decision and the
+[error-route specification](error-routes.md) for the exact behavior.
 
 ### CLI
 
@@ -103,7 +108,8 @@ catalog as JSON for tools. Neither command runs a workflow or needs a network.
 - Runtime parameter validation against the catalog.
 - Loading third-party catalogs or versioning node definitions.
 - Dynamic field options loaded from credentials or remote services.
-- Describing error routes or loop-body edges.
+- Error policy semantics and route execution; the catalog only declares the
+  standard `error` output. See [error-routes](error-routes.md).
 
 ## Acceptance
 

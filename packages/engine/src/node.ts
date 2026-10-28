@@ -2,6 +2,9 @@ import { isJsonObject, isRecord, type JsonObject, type NodeId } from "@krypton/s
 
 import type { EnginePorts } from "./ports.ts";
 
+/** The engine-owned output port used for routed node failures. */
+export const ERROR_PORT = "error";
+
 /**
  * Context for one node execution. Parameters have already had their whole-field
  * expressions resolved for this item. Executors must treat the item, parameters,
@@ -48,7 +51,12 @@ const isNodeOutput = (value: unknown): value is NodeOutput => {
   }
   const port = value["port"];
   const items = value["items"];
-  if (typeof port !== "string" || port.trim() === "" || !Array.isArray(items)) {
+  if (
+    typeof port !== "string" ||
+    port.trim() === "" ||
+    port === ERROR_PORT ||
+    !Array.isArray(items)
+  ) {
     return false;
   }
   for (const item of items) {

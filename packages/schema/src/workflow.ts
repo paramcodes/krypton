@@ -10,10 +10,13 @@ export type RetryPolicy = {
   readonly backoff: RetryBackoff;
 };
 
+export type ErrorPolicy = "fail" | "skip" | "route";
+
 export type NodeInstance = {
   readonly id: NodeId;
   readonly type: string;
   readonly parameters: JsonObject;
+  readonly errorPolicy?: ErrorPolicy;
   readonly retry?: RetryPolicy;
   readonly timeoutMs?: number;
 };
@@ -128,6 +131,16 @@ const parseRetryPolicy = (value: unknown, path: string): RetryPolicy => {
   };
 };
 
+const parseErrorPolicy = (value: unknown, path: string): ErrorPolicy | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value !== "fail" && value !== "skip" && value !== "route") {
+    throw new SchemaError(path, 'Expected "fail", "skip", or "route".');
+  }
+  return value;
+};
+
 const readOptionalString = (
   record: Readonly<Record<string, unknown>>,
   key: string,
@@ -161,12 +174,16 @@ const parseNode = (value: unknown, path: string): NodeInstance => {
     timeoutValue === undefined
       ? undefined
       : readIntegerInRange(record, "timeoutMs", path, 1, MAX_NODE_TIMEOUT_MS);
+  const errorPolicy = parseErrorPolicy(record["errorPolicy"], `${path}.errorPolicy`);
 
-  const node = { id: asNodeId(id), type, parameters };
-  if (timeoutMs === undefined) {
-    return retry === undefined ? node : { ...node, retry };
-  }
-  return retry === undefined ? { ...node, timeoutMs } : { ...node, retry, timeoutMs };
+  return {
+    id: asNodeId(id),
+    type,
+    parameters,
+    ...(errorPolicy === undefined ? {} : { errorPolicy }),
+    ...(retry === undefined ? {} : { retry }),
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
+  };
 };
 
 const parseConnection = (

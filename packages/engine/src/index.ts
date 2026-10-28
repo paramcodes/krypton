@@ -1,6 +1,6 @@
 export { runWorkflow } from "./run.ts";
 export type { RunResult, RunStatus, RunWorkflowOptions } from "./run.ts";
-export { RetryableNodeError } from "./node.ts";
+export { ERROR_PORT, RetryableNodeError } from "./node.ts";
 export type {
   NodeExecutionContext,
   NodeExecutionResult,

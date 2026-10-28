@@ -47,6 +47,8 @@ describe("krypton CLI", () => {
     expect(result.stdout).toContain("loop — Loop Over Items [flow]");
     expect(result.stdout).toContain("cases (list, required)");
     expect(result.stdout).toContain("Case ports");
+    expect(result.stdout).toContain("error (Error)");
+    expect(result.stdout.match(/error \(Error\)/g)).toHaveLength(7);
   });
 
   it("prints the catalog as JSON", () => {

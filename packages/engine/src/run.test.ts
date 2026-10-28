@@ -101,6 +101,10 @@ const invalidResult: NodeExecutor = async () => {
   return result;
 };
 
+const reservedErrorResult: NodeExecutor = async ({ item }) => ({
+  outputs: [{ port: "error", items: [item] }],
+});
+
 const nodes: NodeRegistry = {
   "manual-trigger": echo,
   echo,
@@ -113,6 +117,7 @@ const nodes: NodeRegistry = {
   split,
   "throw-plain": throwPlain,
   "invalid-result": invalidResult,
+  "reserved-error": reservedErrorResult,
 };
 
 const workflow = (value: unknown): Workflow => parseWorkflow(value);
@@ -150,9 +155,13 @@ describe("runWorkflow", () => {
         name: "Unknown",
         nodes: [
           { id: "start", type: "manual-trigger" },
-          { id: "mystery", type: "not-registered" },
+          { id: "mystery", type: "not-registered", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
         ],
-        connections: [{ from: "start", to: "mystery" }],
+        connections: [
+          { from: "start", to: "mystery" },
+          { from: "mystery", fromPort: "error", to: "handler" },
+        ],
       }),
       input: {},
       nodes,
@@ -161,6 +170,8 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => line.node)).toEqual(["start", "mystery"]);
     expect(result.trace.at(-1)).toMatchObject({
       node: "mystery",
       status: "fail",
@@ -281,9 +292,18 @@ describe("runWorkflow", () => {
         name: "Preflight",
         nodes: [
           { id: "start", type: "tracking" },
-          { id: "bad", type: "tracking", parameters: { value: "{{ $json. }}" } },
+          {
+            id: "bad",
+            type: "tracking",
+            errorPolicy: "route",
+            parameters: { value: "{{ $json. }}" },
+          },
+          { id: "handler", type: "tag" },
         ],
-        connections: [{ from: "start", to: "bad" }],
+        connections: [
+          { from: "start", to: "bad" },
+          { from: "bad", fromPort: "error", to: "handler" },
+        ],
       }),
       input: {},
       nodes: { ...nodes, tracking },
@@ -292,6 +312,7 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(executed).toEqual([]);
     expect(result.trace).toHaveLength(1);
     expect(result.trace[0]).toMatchObject({ node: "bad", status: "fail" });
@@ -360,6 +381,35 @@ describe("runWorkflow", () => {
     });
   });
 
+  it("rejects a successful result that claims the reserved error port", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "reserved-error-port",
+        name: "Reserved error port",
+        nodes: [
+          { id: "invalid", type: "reserved-error", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "invalid", fromPort: "error", to: "handler" }],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "invalid",
+        status: "fail",
+        detail: "Node returned an invalid result.",
+      },
+    ]);
+  });
+
   it("turns a thrown node error into a failed trace line", async () => {
     const result = await runWorkflow({
       workflow: workflow({
@@ -385,6 +435,37 @@ describe("runWorkflow", () => {
     });
   });
 
+  it("fails without routing when the policy is explicitly fail", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "fail-error",
+        name: "Fail error",
+        nodes: [
+          { id: "start", type: "manual-trigger" },
+          { id: "explode", type: "explode", errorPolicy: "fail" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [
+          { from: "start", to: "explode" },
+          { from: "explode", fromPort: "error", to: "handler" },
+        ],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => line.node)).toEqual(["start", "explode"]);
+    expect(result.trace.at(-1)).toMatchObject({
+      node: "explode",
+      status: "fail",
+      detail: "boom",
+    });
+  });
+
   it("stops before the first node when the signal is already aborted", async () => {
     const controller = new AbortController();
     controller.abort();
@@ -393,7 +474,11 @@ describe("runWorkflow", () => {
       workflow: workflow({
         id: "cancelled",
         name: "Cancelled",
-        nodes: [{ id: "start", type: "manual-trigger" }],
+        nodes: [
+          { id: "start", type: "manual-trigger", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "start", fromPort: "error", to: "handler" }],
       }),
       input: {},
       nodes,
@@ -402,6 +487,7 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(result.trace).toEqual([
       { atMs: 0, node: "workflow", status: "fail", detail: "Run cancelled." },
     ]);
@@ -414,11 +500,13 @@ describe("runWorkflow", () => {
         name: "Loop",
         nodes: [
           { id: "start", type: "manual-trigger" },
-          { id: "loop", type: "echo" },
+          { id: "loop", type: "echo", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
         ],
         connections: [
           { from: "start", to: "loop" },
           { from: "loop", to: "loop" },
+          { from: "loop", fromPort: "error", to: "handler" },
         ],
       }),
       input: {},
@@ -429,7 +517,12 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
-    expect(result.trace.map((line) => line.status)).toEqual(["ok", "ok", "fail"]);
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => [line.node, line.status])).toEqual([
+      ["start", "ok"],
+      ["loop", "ok"],
+      ["workflow", "fail"],
+    ]);
     expect(result.trace.at(-1)?.detail).toBe("Run exceeded 2 steps.");
   });
 
@@ -475,9 +568,11 @@ describe("runWorkflow", () => {
         id: "start-queue",
         name: "Start queue",
         nodes: [
-          { id: "a", type: "echo" },
+          { id: "a", type: "echo", errorPolicy: "route" },
           { id: "b", type: "echo" },
+          { id: "handler", type: "tag" },
         ],
+        connections: [{ from: "a", fromPort: "error", to: "handler" }],
       }),
       input: {},
       nodes,
@@ -487,6 +582,8 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => line.node)).toEqual(["workflow"]);
     expect(result.trace[0]?.detail).toBe("Run exceeded 1 queued items.");
   });
 
@@ -522,10 +619,14 @@ describe("runWorkflow", () => {
         id: "abort-during",
         name: "Abort during",
         nodes: [
-          { id: "start", type: "aborting" },
+          { id: "start", type: "aborting", errorPolicy: "route" },
           { id: "next", type: "echo" },
+          { id: "handler", type: "tag" },
         ],
-        connections: [{ from: "start", to: "next" }],
+        connections: [
+          { from: "start", to: "next" },
+          { from: "start", fromPort: "error", to: "handler" },
+        ],
       }),
       input: {},
       nodes: { ...nodes, aborting },
@@ -534,6 +635,7 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(result.trace.map((line) => line.status)).toEqual(["fail"]);
     expect(result.trace.at(-1)?.detail).toBe("Run cancelled.");
   });
@@ -689,10 +791,14 @@ describe("runWorkflow", () => {
         id: "queue-budget",
         name: "Queue budget",
         nodes: [
-          { id: "start", type: "fan-out" },
+          { id: "start", type: "fan-out", errorPolicy: "route" },
           { id: "target", type: "tag" },
+          { id: "handler", type: "tag" },
         ],
-        connections: [{ from: "start", to: "target" }],
+        connections: [
+          { from: "start", to: "target" },
+          { from: "start", fromPort: "error", to: "handler" },
+        ],
       }),
       input: {},
       nodes,
@@ -702,6 +808,8 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => line.node)).toEqual(["start", "workflow"]);
     expect(result.trace.at(-1)?.detail).toBe("Run exceeded 1 queued items.");
   });
 
@@ -733,9 +841,18 @@ describe("runWorkflow", () => {
           id: asNodeId("start"),
           type: "manual-trigger",
           parameters: {},
+          errorPolicy: "route",
+        },
+        {
+          id: asNodeId("handler"),
+          type: "tag",
+          parameters: {},
         },
       ],
-      connections: [{ from: asNodeId("start"), to: asNodeId("missing") }],
+      connections: [
+        { from: asNodeId("start"), to: asNodeId("missing") },
+        { from: asNodeId("start"), fromPort: "error", to: asNodeId("handler") },
+      ],
     };
 
     const result = await runWorkflow({
@@ -747,6 +864,8 @@ describe("runWorkflow", () => {
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => line.node)).toEqual(["start", "start"]);
     expect(result.trace.at(-1)?.detail).toBe('Connection points to unknown node "missing".');
   });
 
@@ -906,17 +1025,21 @@ describe("runWorkflow", () => {
           {
             id: "request",
             type: "transient",
+            errorPolicy: "route",
             retry: { maxAttempts: 3, delayMs: 1_000 },
           },
+          { id: "handler", type: "tag" },
         ],
+        connections: [{ from: "request", fromPort: "error", to: "handler" }],
       }),
       input: {},
-      nodes: { transient },
+      nodes: { transient, tag },
       ports: { clock: retryClock, http },
       signal: controller.signal,
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(result.trace).toEqual([
       {
         atMs: 0,
@@ -929,6 +1052,53 @@ describe("runWorkflow", () => {
         node: "workflow",
         status: "fail",
         detail: "Run cancelled.",
+      },
+    ]);
+  });
+
+  it("does not apply an error policy to a retry sleep failure", async () => {
+    const failingClock: Clock = {
+      now: () => 0,
+      sleep: async () => {
+        throw new Error("clock down");
+      },
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "retry-sleep-failure",
+        name: "Retry sleep failure",
+        nodes: [
+          {
+            id: "request",
+            type: "transient",
+            errorPolicy: "route",
+            retry: { maxAttempts: 3, delayMs: 1_000 },
+          },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "request", fromPort: "error", to: "handler" }],
+      }),
+      input: {},
+      nodes: { transient, tag },
+      ports: { clock: failingClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/3: HTTP 503.",
+      },
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "clock down",
       },
     ]);
   });
@@ -949,21 +1119,28 @@ describe("runWorkflow", () => {
           id: asNodeId("request"),
           type: "tracking",
           parameters: {},
+          errorPolicy: "route",
           retry: { maxAttempts: 0, delayMs: 1, backoff: "fixed" },
         },
+        {
+          id: asNodeId("handler"),
+          type: "tag",
+          parameters: {},
+        },
       ],
-      connections: [],
+      connections: [{ from: asNodeId("request"), fromPort: "error", to: asNodeId("handler") }],
     };
 
     const result = await runWorkflow({
       workflow: invalidRetry,
       input: {},
-      nodes: { tracking },
+      nodes: { tracking, tag },
       ports: basePorts,
       signal: newSignal(),
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(attempts).toBe(0);
     expect(result.trace).toEqual([
       {
@@ -1084,10 +1261,14 @@ describe("runWorkflow", () => {
       workflow: workflow({
         id: "cancel-timeout",
         name: "Cancel timeout",
-        nodes: [{ id: "start", type: "never", timeoutMs: 100 }],
+        nodes: [
+          { id: "start", type: "never", timeoutMs: 100, errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "start", fromPort: "error", to: "handler" }],
       }),
       input: {},
-      nodes: { never: neverFinishes },
+      nodes: { never: neverFinishes, tag },
       ports: { clock: timeoutClock, http },
       signal: controller.signal,
     });
@@ -1095,6 +1276,7 @@ describe("runWorkflow", () => {
 
     const result = await pending;
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(result.trace).toEqual([
       { atMs: 0, node: "workflow", status: "fail", detail: "Run cancelled." },
     ]);
@@ -1111,10 +1293,16 @@ describe("runWorkflow", () => {
           id: asNodeId("start"),
           type: "tracking",
           parameters: {},
+          errorPolicy: "route",
           timeoutMs: 120_001,
         },
+        {
+          id: asNodeId("handler"),
+          type: "tag",
+          parameters: {},
+        },
       ],
-      connections: [],
+      connections: [{ from: asNodeId("start"), fromPort: "error", to: asNodeId("handler") }],
     };
     const tracking: NodeExecutor = async ({ item }) => {
       executions += 1;
@@ -1124,12 +1312,13 @@ describe("runWorkflow", () => {
     const result = await runWorkflow({
       workflow: invalidTimeout,
       input: {},
-      nodes: { tracking },
+      nodes: { tracking, tag },
       ports: basePorts,
       signal: newSignal(),
     });
 
     expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
     expect(executions).toBe(0);
     expect(result.trace).toEqual([
       {
@@ -1137,6 +1326,634 @@ describe("runWorkflow", () => {
         node: "start",
         status: "fail",
         detail: "timeoutMs must be an integer between 1 and 120000.",
+      },
+    ]);
+  });
+
+  it("routes a failed item to the error port and continues", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-error",
+        name: "Route error",
+        nodes: [
+          { id: "start", type: "manual-trigger" },
+          { id: "explode", type: "explode", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [
+          { from: "start", to: "explode" },
+          { from: "explode", fromPort: "error", to: "handler" },
+        ],
+      }),
+      input: { order: "A-104", error: "old value" },
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.trace).toEqual([
+      { atMs: 0, node: "start", status: "ok", detail: "1 item" },
+      { atMs: 0, node: "explode", status: "fail", detail: "route error: boom" },
+      { atMs: 0, node: "handler", status: "ok", detail: "1 item" },
+    ]);
+    expect(result.outputs).toEqual([
+      {
+        order: "A-104",
+        error: {
+          nodeId: "explode",
+          nodeType: "explode",
+          message: "boom",
+          attempts: 1,
+          retryable: false,
+          atMs: 0,
+        },
+        start: "handler",
+      },
+    ]);
+  });
+
+  it("preserves reserved state and does not mutate the failed item", async () => {
+    const input = {
+      order: "A-113",
+      error: "old value",
+      __krypton: { keep: true },
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-immutability",
+        name: "Route immutability",
+        nodes: [
+          { id: "explode", type: "explode", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "explode", fromPort: "error", to: "handler" }],
+      }),
+      input,
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(input).toEqual({
+      order: "A-113",
+      error: "old value",
+      __krypton: { keep: true },
+    });
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toHaveLength(1);
+    expect(result.outputs[0]?.["__krypton"]).toEqual({ keep: true });
+    expect(result.outputs[0]?.["error"]).toEqual({
+      nodeId: "explode",
+      nodeType: "explode",
+      message: "boom",
+      attempts: 1,
+      retryable: false,
+      atMs: 0,
+    });
+    expect(result.outputs[0]?.["start"]).toBe("handler");
+  });
+
+  it("exposes routed error fields to normal expressions", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-expression",
+        name: "Route expression",
+        nodes: [
+          { id: "explode", type: "explode", errorPolicy: "route" },
+          {
+            id: "handler",
+            type: "parameter-echo",
+            parameters: {
+              message: "{{ $json.error.message }}",
+              retryable: "{{ $json.error.retryable }}",
+            },
+          },
+        ],
+        connections: [{ from: "explode", fromPort: "error", to: "handler" }],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toHaveLength(1);
+    expect(result.outputs[0]?.["parameters"]).toEqual({
+      message: "boom",
+      retryable: false,
+    });
+  });
+
+  it("applies the policy per node instance", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "per-instance-policy",
+        name: "Per-instance policy",
+        nodes: [
+          { id: "a", type: "explode", errorPolicy: "route" },
+          { id: "b", type: "explode", errorPolicy: "skip" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "a", fromPort: "error", to: "handler" }],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.trace.map((line) => [line.node, line.status])).toEqual([
+      ["a", "fail"],
+      ["b", "skip"],
+      ["handler", "ok"],
+    ]);
+    expect(result.outputs).toHaveLength(1);
+    expect(result.outputs[0]?.["start"]).toBe("handler");
+  });
+
+  it("handles each failed item independently", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "per-item-policy",
+        name: "Per-item policy",
+        nodes: [
+          { id: "start", type: "fan-out-values" },
+          { id: "explode", type: "explode", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [
+          { from: "start", to: "explode" },
+          { from: "explode", fromPort: "error", to: "handler" },
+        ],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.trace.map((line) => [line.node, line.status])).toEqual([
+      ["start", "ok"],
+      ["explode", "fail"],
+      ["explode", "fail"],
+      ["handler", "ok"],
+      ["handler", "ok"],
+    ]);
+    expect(result.outputs).toHaveLength(2);
+    expect(result.outputs.every((item) => item["start"] === "handler")).toBe(true);
+  });
+
+  it("fans a routed error out to every error connection", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-error-fan-out",
+        name: "Route error fan out",
+        nodes: [
+          { id: "explode", type: "explode", errorPolicy: "route" },
+          { id: "handler-a", type: "tag" },
+          { id: "handler-b", type: "tag" },
+        ],
+        connections: [
+          { from: "explode", fromPort: "error", to: "handler-a" },
+          { from: "explode", fromPort: "error", to: "handler-b" },
+        ],
+      }),
+      input: { order: "A-108" },
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs.map((item) => item["start"])).toEqual(["handler-a", "handler-b"]);
+    expect(result.outputs).toHaveLength(2);
+    expect(result.outputs[0]?.["error"]).toEqual({
+      nodeId: "explode",
+      nodeType: "explode",
+      message: "boom",
+      attempts: 1,
+      retryable: false,
+      atMs: 0,
+    });
+    expect(result.outputs[1]?.["error"]).toEqual(result.outputs[0]?.["error"]);
+    expect(result.trace.map((line) => [line.node, line.status])).toEqual([
+      ["explode", "fail"],
+      ["handler-a", "ok"],
+      ["handler-b", "ok"],
+    ]);
+  });
+
+  it("skips a failed item and continues unrelated queued work", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "skip-error",
+        name: "Skip error",
+        nodes: [
+          { id: "start", type: "manual-trigger" },
+          { id: "explode", type: "explode", errorPolicy: "skip" },
+          { id: "after", type: "tag" },
+        ],
+        connections: [
+          { from: "start", to: "explode" },
+          { from: "start", to: "after" },
+        ],
+      }),
+      input: { order: "A-105" },
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.trace).toEqual([
+      { atMs: 0, node: "start", status: "ok", detail: "1 item" },
+      { atMs: 0, node: "explode", status: "skip", detail: "skipped: boom" },
+      { atMs: 0, node: "after", status: "ok", detail: "1 item" },
+    ]);
+    expect(result.outputs).toEqual([{ order: "A-105", start: "after" }]);
+  });
+
+  it("routes after retry exhaustion and keeps the failure visible", async () => {
+    const { clock: retryClock, sleeps } = advancingClock();
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-retry-exhausted",
+        name: "Route retry exhausted",
+        nodes: [
+          {
+            id: "request",
+            type: "transient",
+            errorPolicy: "route",
+            retry: { maxAttempts: 2, delayMs: 100 },
+          },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "request", fromPort: "error", to: "handler" }],
+      }),
+      input: { order: "A-106" },
+      nodes: { transient, tag },
+      ports: { clock: retryClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(sleeps).toEqual([100]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/2: HTTP 503.",
+      },
+      {
+        atMs: 100,
+        node: "request",
+        status: "fail",
+        detail: "route error: attempt 2/2: HTTP 503.",
+      },
+      { atMs: 100, node: "handler", status: "ok", detail: "1 item" },
+    ]);
+    expect(result.outputs).toEqual([
+      {
+        order: "A-106",
+        error: {
+          nodeId: "request",
+          nodeType: "transient",
+          message: "HTTP 503.",
+          attempts: 2,
+          retryable: true,
+          atMs: 100,
+        },
+        start: "handler",
+      },
+    ]);
+  });
+
+  it("skips after retry exhaustion and records the final attempt", async () => {
+    const { clock: retryClock, sleeps } = advancingClock();
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "skip-retry-exhausted",
+        name: "Skip retry exhausted",
+        nodes: [
+          {
+            id: "request",
+            type: "transient",
+            errorPolicy: "skip",
+            retry: { maxAttempts: 2, delayMs: 100 },
+          },
+        ],
+      }),
+      input: { order: "A-111" },
+      nodes: { transient },
+      ports: { clock: retryClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toEqual([]);
+    expect(sleeps).toEqual([100]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/2: HTTP 503.",
+      },
+      {
+        atMs: 100,
+        node: "request",
+        status: "skip",
+        detail: "skipped: attempt 2/2: HTTP 503.",
+      },
+    ]);
+  });
+
+  it("uses the final error class for a routed item after retries", async () => {
+    const { clock: retryClock, sleeps } = advancingClock();
+    let attempts = 0;
+    const mixed: NodeExecutor = async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new RetryableNodeError("HTTP 503.");
+      }
+      throw new Error("bad payload");
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-final-error-class",
+        name: "Route final error class",
+        nodes: [
+          {
+            id: "request",
+            type: "mixed",
+            errorPolicy: "route",
+            retry: { maxAttempts: 2, delayMs: 100 },
+          },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "request", fromPort: "error", to: "handler" }],
+      }),
+      input: { order: "A-112" },
+      nodes: { mixed, tag },
+      ports: { clock: retryClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(attempts).toBe(2);
+    expect(sleeps).toEqual([100]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "request",
+        status: "fail",
+        detail: "attempt 1/2: HTTP 503.",
+      },
+      {
+        atMs: 100,
+        node: "request",
+        status: "fail",
+        detail: "route error: attempt 2/2: bad payload",
+      },
+      { atMs: 100, node: "handler", status: "ok", detail: "1 item" },
+    ]);
+    expect(result.outputs).toEqual([
+      {
+        order: "A-112",
+        error: {
+          nodeId: "request",
+          nodeType: "mixed",
+          message: "bad payload",
+          attempts: 2,
+          retryable: false,
+          atMs: 100,
+        },
+        start: "handler",
+      },
+    ]);
+  });
+
+  it("fails a routed error when no error output is connected", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "missing-error-route",
+        name: "Missing error route",
+        nodes: [
+          { id: "explode", type: "explode", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "explode", to: "handler" }],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace.map((line) => line.node)).toEqual(["explode"]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "explode",
+        status: "fail",
+        detail: 'No "error" output is connected for a routed failure: boom',
+      },
+    ]);
+  });
+
+  it("routes a timeout as a node failure", async () => {
+    let time = 0;
+    const timeoutClock: Clock = {
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-timeout",
+        name: "Route timeout",
+        nodes: [
+          { id: "slow", type: "never", timeoutMs: 5, errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "slow", fromPort: "error", to: "handler" }],
+      }),
+      input: { order: "A-107" },
+      nodes: { never: neverFinishes, tag },
+      ports: { clock: timeoutClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.trace).toEqual([
+      {
+        atMs: 5,
+        node: "slow",
+        status: "fail",
+        detail: "route error: Node timed out after 5ms.",
+      },
+      { atMs: 5, node: "handler", status: "ok", detail: "1 item" },
+    ]);
+    expect(result.outputs).toEqual([
+      {
+        order: "A-107",
+        error: {
+          nodeId: "slow",
+          nodeType: "never",
+          message: "Node timed out after 5ms.",
+          attempts: 1,
+          retryable: false,
+          atMs: 5,
+        },
+        start: "handler",
+      },
+    ]);
+  });
+
+  it("skips a timed-out attempt", async () => {
+    let time = 0;
+    const timeoutClock: Clock = {
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    };
+
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "skip-timeout",
+        name: "Skip timeout",
+        nodes: [{ id: "slow", type: "never", timeoutMs: 5, errorPolicy: "skip" }],
+      }),
+      input: { order: "A-110" },
+      nodes: { never: neverFinishes },
+      ports: { clock: timeoutClock, http },
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 5,
+        node: "slow",
+        status: "skip",
+        detail: "skipped: Node timed out after 5ms.",
+      },
+    ]);
+  });
+
+  it("does not apply an error policy to parameter evaluation failures", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-evaluation-error",
+        name: "Route evaluation error",
+        nodes: [
+          { id: "start", type: "manual-trigger" },
+          {
+            id: "bad",
+            type: "parameter-echo",
+            errorPolicy: "route",
+            parameters: { value: "{{ $json.missing }}" },
+          },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [
+          { from: "start", to: "bad" },
+          { from: "bad", fromPort: "error", to: "handler" },
+        ],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.trace.map((line) => line.node)).toEqual(["start", "bad"]);
+    expect(result.trace.at(-1)?.detail).toContain('Unknown field "missing"');
+  });
+
+  it("does not apply an error policy to an invalid executor result", async () => {
+    const result = await runWorkflow({
+      workflow: workflow({
+        id: "route-invalid-result",
+        name: "Route invalid result",
+        nodes: [
+          { id: "invalid", type: "invalid-result", errorPolicy: "route" },
+          { id: "handler", type: "tag" },
+        ],
+        connections: [{ from: "invalid", fromPort: "error", to: "handler" }],
+      }),
+      input: {},
+      nodes,
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "invalid",
+        status: "fail",
+        detail: "Node returned an invalid result.",
+      },
+    ]);
+  });
+
+  it("rejects an invalid in-memory error policy before node execution", async () => {
+    let executions = 0;
+    const tracking: NodeExecutor = async ({ item }) => {
+      executions += 1;
+      return { outputs: [{ port: "main", items: [item] }] };
+    };
+    const invalidWorkflow = workflow({
+      id: "invalid-error-policy",
+      name: "Invalid error policy",
+      nodes: [
+        { id: "start", type: "tracking" },
+        { id: "invalid", type: "tracking" },
+      ],
+      connections: [{ from: "start", to: "invalid" }],
+    });
+    const invalid = invalidWorkflow.nodes[1];
+    if (invalid === undefined) {
+      throw new Error("Expected an invalid-policy node.");
+    }
+    Object.defineProperty(invalid, "errorPolicy", { value: "explode" });
+
+    const result = await runWorkflow({
+      workflow: invalidWorkflow,
+      input: {},
+      nodes: { tracking },
+      ports: basePorts,
+      signal: newSignal(),
+    });
+
+    expect(result.status).toBe("fail");
+    expect(result.outputs).toEqual([]);
+    expect(executions).toBe(0);
+    expect(result.trace).toEqual([
+      {
+        atMs: 0,
+        node: "invalid",
+        status: "fail",
+        detail: 'errorPolicy must be "fail", "skip", or "route".',
       },
     ]);
   });

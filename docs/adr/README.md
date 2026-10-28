@@ -65,3 +65,4 @@ Name the evidence or event that should reopen this decision.
 | [0018](0018-node-catalog.md)                | Node catalog and UI parameter metadata                        | accepted |
 | [0019](0019-merge-node.md)                  | Merge node: append-only fan-in                                | accepted |
 | [0020](0020-loop-node.md)                   | Loop over items: state carried in the item                    | accepted |
+| [0021](0021-node-error-routes.md)           | Node error policies and the fixed error output                | accepted |

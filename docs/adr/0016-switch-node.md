@@ -5,7 +5,9 @@
 - Deciders: project owner, node implementation owner
 
 > [ADR 0019](0019-merge-node.md) and [ADR 0020](0020-loop-node.md) later add
-> Merge and Loop over items. True joins and error routes remain separate work.
+> Merge and Loop over items. [ADR 0021](0021-node-error-routes.md) later adds
+> per-node error policies and reserves the standard `error` output, so a Switch
+> case port may not be named `error`.
 
 ## Context
 
@@ -54,8 +56,8 @@ does not provide.
 - Case values and ports are validated at execution time, after expressions are
   resolved, so expression-produced duplicates or composite values fail visibly.
 - The `default` output is stable and requires no configurable fallback field.
-- Merge and Loop are added by ADRs 0019 and 0020; true joins, error routes, and
-  UI-generated schemas remain separate work.
+- Merge, Loop, and error routes are added by ADRs 0019, 0020, and 0021; true
+  joins and UI-generated schemas remain separate work.
 
 ## Revisit when
 

@@ -30,18 +30,18 @@ describe("core node catalog", () => {
     const trigger = entry("manual-trigger");
     expect(trigger.category).toBe("trigger");
     expect(trigger.inputs).toEqual([]);
-    expect(trigger.outputs.map((port) => port.name)).toEqual(["main"]);
+    expect(trigger.outputs.map((port) => port.name)).toEqual(["main", "error"]);
 
     const branch = entry("if");
     expect(branch.category).toBe("flow");
-    expect(branch.outputs.map((port) => port.name)).toEqual(["true", "false"]);
+    expect(branch.outputs.map((port) => port.name)).toEqual(["true", "false", "error"]);
     expect(branch.parameters).toMatchObject([
       { key: "condition", kind: "boolean", required: true },
     ]);
 
     const switchNode = entry("switch");
     expect(switchNode.category).toBe("flow");
-    expect(switchNode.outputs.map((port) => port.name)).toEqual(["default"]);
+    expect(switchNode.outputs.map((port) => port.name)).toEqual(["default", "error"]);
     expect(switchNode.dynamicOutputs).toBeDefined();
     expect(switchNode.parameters).toMatchObject([
       { key: "value", kind: "json", required: true },
@@ -52,13 +52,13 @@ describe("core node catalog", () => {
     expect(merge.category).toBe("flow");
     expect(merge.inputs.map((port) => port.name)).toEqual(["main"]);
     expect(merge.inputs[0]?.description).toContain("any number");
-    expect(merge.outputs.map((port) => port.name)).toEqual(["main"]);
+    expect(merge.outputs.map((port) => port.name)).toEqual(["main", "error"]);
     expect(merge.parameters).toEqual([]);
 
     const loop = entry("loop");
     expect(loop.category).toBe("flow");
     expect(loop.inputs.map((port) => port.name)).toEqual(["main"]);
-    expect(loop.outputs.map((port) => port.name)).toEqual(["loop", "done"]);
+    expect(loop.outputs.map((port) => port.name)).toEqual(["loop", "done", "error"]);
     expect(loop.parameters).toMatchObject([
       { key: "items", kind: "json", required: true },
       {
@@ -73,6 +73,7 @@ describe("core node catalog", () => {
 
     const http = entry("http-request");
     expect(http.category).toBe("network");
+    expect(http.outputs.map((port) => port.name)).toEqual(["main", "error"]);
     expect(http.parameters.find((field) => field.key === "url")).toMatchObject({
       kind: "text",
       required: true,
@@ -86,6 +87,16 @@ describe("core node catalog", () => {
       integer: true,
       defaultValue: 30_000,
     });
+  });
+
+  it("declares the standard error output for every node", () => {
+    for (const node of coreNodeCatalog) {
+      expect(node.outputs.find((port) => port.name === "error")).toMatchObject({
+        name: "error",
+        label: "Error",
+      });
+      expect(node.outputs.filter((port) => port.name === "error")).toHaveLength(1);
+    }
   });
 
   it("declares the Switch case fields and the Set value map", () => {

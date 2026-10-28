@@ -7,8 +7,9 @@
 > [ADR 0014](0014-http-request-and-retries.md) adds the `Http` port, bounded
 > retries, and HTTP request timeouts. [ADR 0019](0019-merge-node.md) adds an
 > append-only Merge, and [ADR 0020](0020-loop-node.md) adds a Loop over items
-> node using the same queue. The queue model stands; true join/wait semantics
-> and error routes remain deferred.
+> node using the same queue. [ADR 0021](0021-node-error-routes.md) adds per-node
+> error policies on the existing named-port model. The queue model stands; true
+> join/wait semantics remain deferred.
 > [ADR 0015](0015-node-execution-timeouts.md) adds a generic timeout for one
 > node executor attempt.
 > [ADR 0016](0016-switch-node.md) adds a built-in Switch that selects among the
@@ -51,13 +52,13 @@ registry.
 - The engine validates an executor result at runtime before using it: named
   ports, JSON object items, and an optional string detail. An invalid result
   fails the run instead of being trusted because the TypeScript type says so.
-- The first slice fails fast on an unknown node type, an executor error, a
+- The first slice failed fast on an unknown node type, an executor error, a
   cancelled signal, or a run that exceeds a budget. Cancellation is checked
   before and after each executor; a cancelled result is not processed. The
   default step budget is 10,000 executions and the default queued-item budget is
   10,000 entries. Both are configurable in the internal run options. Retries and
   timeouts have their own ADRs; Merge and Loop add node-level semantics over the
-  same queue. True joins and error routes remain deferred.
+  same queue. ADR 0021 adds per-node error policies; true joins remain deferred.
 - The first slice has only the `Clock` port. `Random`, `Http`, `RunStore`, and
   `Secrets` are added when their first consumer exists, so the contract stays
   honest.
@@ -86,12 +87,13 @@ registry.
 - Cycles can exhaust the step budget. That is a visible failure, not a silent
   hang; ADR 0020 adds an explicit Loop over items node, while unrelated cycles
   remain bounded only by the budget.
-- Failures stop the run in this slice. Error routes need the journal and retry
-  design before they can be added; bounded retries are added by ADR 0014.
+- Failures stop the run by default. ADR 0021 adds per-node error policies;
+  in-memory routing does not require the journal, which remains future work.
+  Bounded retries are added by ADR 0014.
 - The journal, persistence, and the remaining ports are Stage 1/Stage 4 work.
 
 ## Revisit when
 
-- A workflow needs true joins, error routes, or bounded retries.
+- A workflow needs true joins or workflow-level error handlers.
 - The journal needs durable checkpoints or replay.
 - A real node needs a port that the engine does not yet expose.

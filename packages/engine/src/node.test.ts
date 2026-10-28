@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isNodeExecutionResult } from "./node";
+import { ERROR_PORT, isNodeExecutionResult } from "./node";
 
 describe("node result validation", () => {
   it("accepts a result with named ports, JSON items, and optional detail", () => {
@@ -16,6 +16,7 @@ describe("node result validation", () => {
     expect(isNodeExecutionResult(null)).toBe(false);
     expect(isNodeExecutionResult("not-a-result")).toBe(false);
     expect(isNodeExecutionResult({ outputs: [{ port: "", items: [] }] })).toBe(false);
+    expect(isNodeExecutionResult({ outputs: [{ port: ERROR_PORT, items: [] }] })).toBe(false);
     expect(isNodeExecutionResult({ outputs: [{ port: "main", items: "nope" }] })).toBe(false);
     expect(isNodeExecutionResult({ outputs: ["nope"] })).toBe(false);
     expect(isNodeExecutionResult({ outputs: [{ port: "main", items: [new Map()] }] })).toBe(false);

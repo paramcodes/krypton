@@ -27,6 +27,12 @@ A catalog entry has a stable `type`, a display `label`, a `description`, a
 `category` (`trigger`, `flow`, `data`, or `network`), fixed `inputs` and
 `outputs`, optional `dynamicOutputs`, and a list of `parameters`.
 
+Every core entry declares one standard `error` output in addition to its success
+ports. The port is part of the engine's error-routing contract; see
+[error policies and error routes](../error-routes.md) for the `errorPolicy`
+values and the routed item shape. The port is not returned by a successful
+executor.
+
 Parameter fields are one of:
 
 | Kind        | Use                                                            |
@@ -44,8 +50,10 @@ invalid defaults, control characters, and malformed bounds are rejected. See the
 [specification](../specs/node-catalog.md) for the exact rules.
 
 Switch is the first node with dynamic outputs. It declares one fixed `default`
-port and a `dynamicOutputs` description; each configured case supplies another
-port name. The editor can render the fixed handle plus one handle per case.
+output, the standard `error` output, and a `dynamicOutputs` description; each
+configured case supplies another port name. The editor can render the fixed
+handles plus one handle per case. Case ports may not use the reserved name
+`error`.
 
 ## Adding a node
 
