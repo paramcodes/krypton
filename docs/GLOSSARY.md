@@ -31,6 +31,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | SSRF             | Server-side request forgery: tricking a server into requesting private or otherwise unsafe destinations.          |
 | Simulation       | A deterministic test run that uses fake ports instead of real time, network, or storage.                          |
 | Expect test      | A readable end-to-end test that runs the engine and snapshots the human-readable trace inline.                    |
+| Property test    | A test that generates many randomized inputs and checks an invariant, shrinking failures to a counterexample.     |
 | Expression       | A whole-field `{{ expression }}` value reference evaluated per item, with no arbitrary code, I/O, or secrets.     |
 | Credential       | An encrypted secret attached to a node and never returned by the API.                                             |
 | Sandbox          | An isolated runtime for user code, separate from the API and worker.                                              |

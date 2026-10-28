@@ -1,79 +1,73 @@
-# Implementation Plan: Node error policies and error routes
+# Implementation Plan: Graph property tests
 
 ## Overview
 
-Let a node instance choose what happens when an executor fails after its retries:
-stop the run, skip the failed item, or route an error item to a fixed `error`
-output. The default remains fail-fast. The engine stays pure and deterministic,
-and every handled failure remains visible in the trace.
+Add a property test for the engine's graph boundary. Random structurally valid
+workflows must parse and run without throwing. Random invalid workflows must be
+rejected with a `SchemaError` that names a path and a readable reason.
+
+The test uses `fast-check`, pinned as a dev dependency of `@krypton/engine`, and
+the existing fake ports. It complements the expect tests; it does not replace
+them.
 
 ## Architecture Decisions
 
-- Add `errorPolicy: "fail" | "skip" | "route"` to `NodeInstance`; omission means
-  `fail`.
-- Apply the policy to executor errors, retry exhaustion, and timeouts. Do not
-  apply it to parameter evaluation, invalid executor results, unknown node types,
-  cancellation, invalid configuration, retry-sleep failures, or engine budgets.
-- Use the fixed `error` output port. A `route` failure with no connected error
-  edge fails the run instead of silently dropping the item.
-- Route a new item containing the failed input fields plus an `error` object with
-  `nodeId`, `nodeType`, `message`, `attempts`, `retryable`, and `atMs`. Replace
-  any existing top-level `error` field.
-- Keep the run status `ok` when every failure was handled; the trace records
-  failed, skipped, and routed lines. Do not add a `partial` status yet.
-- Declare the standard `error` output in every core catalog entry and reserve the
-  name against Switch case ports.
-- No new dependencies, no workflow-level handler, no durable journal, and no
-  editor work in this slice.
+- Add `fast-check` at exact version `4.10.2` to `@krypton/engine`; it is a
+  dev-only dependency.
+- Keep the property test in `packages/engine/src/graph.property.test.ts` so it
+  exercises both `parseWorkflow` and `runWorkflow`.
+- Generate valid graphs with unique node IDs, known test node types, bounded
+  nodes/connections, and optional named source ports. Run with bounded steps and
+  queue size so cycles cannot hang the suite.
+- Generate invalid workflows by mutating a valid base: duplicate IDs, unknown
+  connection endpoints, empty nodes, invalid expression versions, invalid
+  retry/timeout/policy values, non-JSON parameters, and control characters.
+- Assert the parser throws `SchemaError` with the expected `$`-rooted field path
+  and message for each mutation. A fast-check failure reports its seed and shrink
+  path.
+- Do not add a runtime generator, a new port, or a new engine behavior.
 
 ## Scope
 
 ### In
 
-- Schema parsing for `errorPolicy`.
-- Engine parsing, validation, retry/timeout interaction, skip and route handling,
-  error item creation, fan-out, queue limits, trace, and status.
-- Core catalog error outputs and Switch reserved-port validation.
-- Engine, schema, catalog, CLI, and real-node expect tests.
-- ADR, specification, user guide, glossary, architecture, catalog, switch,
-  timeout, and learning-path updates.
+- Engine dev dependency and lockfile update.
+- Valid-graph and invalid-graph property tests.
+- ADR 0022, ADR index, test-strategy update, glossary, and learning path.
+- Task plan and todo replacement.
 
 ### Out
 
-- Workflow-level error handlers or triggers.
-- Durable error events, resume, redaction, correlation IDs, or provider error
-  codes.
-- A `partial` run status or per-workflow defaults.
-- Editor components for hiding or validating the error handle.
+- Crash-and-resume, durable persistence, or Stage 2 work.
+- Expression property tests; the evaluator does not have a stable generator yet.
+- Semantic port-aware graph generation based on the node catalog.
+- Fuzz testing outside the engine/schema graph boundary.
 
 ## Testing Strategy
 
-- Schema tests accept all three values and reject unknown or non-string values.
-- Engine tests prove fail, skip, route, route after retry exhaustion, timeout
-  routing, no-edge failure, fan-out, and bypass for parameter/contract failures.
-- A nodes-core expect test runs the real HTTP Request node through retries and an
-  error route with fake ports and an inline trace snapshot.
-- Catalog tests assert every core node has exactly one standard error output;
-  Switch tests reject a case named `error`.
-- CLI tests list the standard error output.
+- Valid property: 100 generated workflows; parse and run each with fake ports,
+  `maxSteps: 50`, and `maxQueuedItems: 100`; assert a valid status and trace.
+- Invalid properties: one 100-run property per mutation kind; assert
+  `SchemaError`, the expected `$` field path, and the expected message.
+- Deterministic valid graph: a two-node chain must reach `ok`, execute both
+  nodes in order, and return its item.
+- Existing expect tests remain the primary readable coverage.
 - Full gate: `bun run check`, `bun run build`, `bun run test:coverage`,
   `bun run e2e`, and the deleted-test guard.
 
 ## Risks and Mitigations
 
-- **Hidden failures:** handled failures still appear in the trace, and `route`
-  without a connection fails the run.
-- **Scope creep:** no workflow handler, journal, editor, or `partial` status.
-- **Retry/timeout interaction:** policy runs only after the retry loop or a
-  non-retryable attempt; timeout remains non-retryable.
-- **Port collision:** the engine reserves `error` and Switch rejects it.
-- **Sensitive messages:** the docs warn against putting secrets in errors;
-  redaction remains future work.
+- **Nondeterministic failures:** fast-check reports the seed; tests use fake
+  clocks and bounded execution.
+- **Slow or exploding graphs:** cap nodes, connections, steps, and queue size.
+- **Generator drift:** keep raw workflow shapes aligned with `parseWorkflow` and
+  use the schema parser as the oracle.
+- **Dependency creep:** pin exactly, keep it dev-only, and record the decision in
+  ADR 0022.
 
 ## Definition of Done
 
 - `bun run check` passes.
-- New behavior has failing-first tests and a passing implementation.
-- Boundaries and ADRs describe the code.
-- Docs and glossary cover the new domain terms.
+- The deterministic execution test and every mutation-specific property pass.
+- ADR 0022 and the test-strategy docs describe the dependency and scope.
 - The diff is small enough for a human to walk through.

@@ -21,8 +21,9 @@ makes the common failure readable and the integration wiring visible.
   Podman. Do not replace the database with an in-memory fake for query behavior.
 - **Browser:** Playwright for critical flows and accessibility checks. The
   Stage 0 smoke test proves the harness runs; real flows arrive with the editor.
-- **Later:** property tests for graph invariants and expression evaluation once
-  those modules exist.
+- **Property tests:** graph invariants use pinned `fast-check`; see
+  [ADR 0022](0022-property-tests-with-fast-check.md). Expression properties can
+  follow once the expression evaluator has a stable generator.
 - **Coverage:** engine thresholds are 90% lines, functions, branches, and
   statements. They are a tripwire, not a target. CI runs
   `bun run test:coverage`, so a local test run cannot hide a threshold drop.

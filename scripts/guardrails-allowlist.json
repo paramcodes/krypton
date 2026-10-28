@@ -1,4 +1,10 @@
 {
   "$comment": "Every entry needs a human-reviewed reason. Fix the code first.",
-  "allow": []
+  "allow": [
+    {
+      "file": "packages/engine/src/graph.property.test.ts",
+      "rule": "pure-import",
+      "reason": "Test-only property file; the file-wide pure-import exception covers its pinned fast-check generator. No runtime module in @krypton/engine imports fast-check."
+    }
+  ]
 }
