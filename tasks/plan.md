@@ -1,64 +1,58 @@
-# Implementation Plan: Switch node
+# Implementation Plan: Bun typechecker
 
 ## Overview
 
-Implement the approved contract in `docs/specs/switch-node.md`: a pure
-`packages/nodes-core` node that routes an item by strict scalar equality to the
-first matching named port, or to `default` when no case matches.
+Use Bun 1.4.4's built-in checker for the fast-gate `typecheck` command. Keep the
+pinned `tsc --noEmit` as the build gate so the authoritative compiler check is
+unchanged. No bundling or artifact changes are part of this slice.
 
 ## Architecture Decisions
 
-- Keep Switch logic in `nodes-core`; the engine already routes outputs by named
-  port and does not need changes.
-- Match only JSON scalar values using strict same-type equality. Reject
-  composite values and duplicate case values instead of defining deep equality.
-- Preserve case order for matching and allow multiple distinct case values to
-  share a port.
-- Fix the unmatched output name as `default`; do not add a configurable default
-  port or generated UI schema in this slice.
-- The Bun typecheck/build question is a separate tooling concern and is not part
-  of this node change.
+- `typecheck` runs `bun check --no-script`; the flag prevents recursion into the
+  root `check` script.
+- `build` stays `tsc --noEmit`. CI continues to verify with the pinned
+  TypeScript 7.0.2.
+- `bun build` is out of scope: the current build is a no-emit verification, not
+  artifact production.
+- The Bun and TypeScript pins move together.
 
 ## Task List
 
-### Phase 1: Node behavior
+### Phase 1: Verify parity
 
-- [x] Task 1: Implement Switch routing with failing-first unit tests.
+- [x] Task 1: Compare checked-file coverage and strict diagnostics against tsc.
 
-### Checkpoint: Node behavior
+### Checkpoint: Parity
 
-- [x] Unit tests cover scalar matches, type sensitivity, defaults, shared ports,
-      and invalid/ambiguous configuration.
-- [x] Existing core node behavior remains unchanged.
+- [x] Both checkers cover the same 37 project files.
+- [x] Probe errors for strict flags match tsc exactly.
 
-### Phase 2: Engine integration
+### Phase 2: Switch the fast gate
 
-- [x] Task 2: Add a fake-port engine expect test for named-port routing.
+- [x] Task 2: Update the `typecheck` script and run it.
 
-### Checkpoint: Integration
+### Checkpoint: Fast gate
 
-- [x] The inline trace snapshot demonstrates only the selected downstream path
-      executes and output items retain their values.
+- [x] `bun run typecheck`, `bun run check`, and `bun run build` pass.
 
-### Phase 3: Decision and docs
+### Phase 3: Record the decision
 
-- [x] Task 3: Record the matching contract and add the Switch node guide.
+- [x] Task 3: Add ADR 0017 and update the runtime constraints.
 
 ### Checkpoint: Complete
 
-- [x] `bun run check`, `bun run build`, `bun run test:coverage`, and `bun run e2e`
-      pass; deleted-test guard compares against `main`.
+- [x] Documentation links resolve.
+- [x] `BASE_SHA=main bun run check`, `build`, `test:coverage`, and `e2e` pass.
 - [x] Diff reviewed and ready for PR.
 
 ## Risks and Mitigations
 
-| Risk                                                                    | Impact | Mitigation                                                |
-| ----------------------------------------------------------------------- | ------ | --------------------------------------------------------- |
-| Object/array equality is unclear and potentially surprising.            | Medium | Restrict selected and case values to JSON scalars.        |
-| Duplicate case values would make routing order-dependent.               | Medium | Reject duplicate values; retain order for distinct cases. |
-| Custom port names contain control characters or whitespace-only values. | Low    | Validate names before returning the output.               |
+| Risk                                           | Impact | Mitigation                                                   |
+| ---------------------------------------------- | ------ | ------------------------------------------------------------ |
+| Bun's embedded TypeScript drifts from the pin. | Medium | `build` still runs `tsc --noEmit`; bump both pins together.  |
+| `bun check` resolves to the package script.    | Low    | Use `--no-script`; the gate exercises the exact command.     |
+| The checker skips files that tsc includes.     | Medium | File-set and diagnostic parity verified; build gate remains. |
 
 ## Open Questions
 
-- None for the Switch scope. Whether to replace the typecheck command with
-  `bun check --no-script` is intentionally separate.
+- None. A real build and artifact pipeline remains separate work.

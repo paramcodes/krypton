@@ -16,10 +16,13 @@ an ADR. Do not bypass it.
 - Bun 1.4.4 installs dependencies and runs repo scripts.
 - Node 26 runs the API, worker, CLI, and tests.
 - Turborepo 2.11.7 orchestrates tasks. TypeScript 7.0.2 is strict.
+- `bun run typecheck` uses Bun's built-in checker for fast feedback. `bun run
+  build` keeps the pinned `tsc --noEmit` as the authoritative typecheck.
 - Pin exact versions and prefer releases at least two weeks old.
 - Pin GitHub Actions to commit SHAs, with the tag in a comment.
 - No global installs without asking. Project-local tools only.
-- Enforced by `package.json`, `bun.lock`, `bunfig.toml`, the workflow, and review.
+- Enforced by `package.json`, `bun.lock`, `bunfig.toml`, `.bun-version`, the
+  workflow, [ADR 0017](docs/adr/0017-bun-typechecker.md), and review.
 
 ## Boundaries and engine purity
 

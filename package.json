@@ -24,7 +24,7 @@
     "skills:list": "skills list",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun check --no-script"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
