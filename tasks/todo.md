@@ -1,95 +1,91 @@
-# Tasks: Node catalog
+# Tasks: Merge node
 
-## Task 1: Add catalog types and parser
+## Task 1: Write the Merge spec and ADR
 
-**Description:** Define the node metadata contract in `@krypton/node-sdk` and
-validate untrusted catalog values at the boundary.
+**Description:** Define append-only fan-in and record why the engine has no
+barrier yet.
 
 **Acceptance criteria:**
 
-- [x] Catalog entries, ports, dynamic outputs, and all parameter kinds are typed.
-- [x] Parser rejects duplicate types, ports, keys, invalid defaults, and bounds.
-- [x] A JSON round trip of a valid catalog parses cleanly.
+- [x] Spec covers inputs, output, ordering, non-waiting behavior, and limits.
+- [x] ADR records alternatives and revisit triggers.
 
-**Verification:** `bunx vitest run packages/node-sdk/src/catalog.test.ts`.
+**Verification:** `bun scripts/check-doc-links.ts`.
 
-**Dependencies:** None.
+**Dependencies:** Catalog slice merged.
 
 **Files likely touched:**
 
-- `packages/node-sdk/package.json`
-- `packages/node-sdk/src/index.ts`
-- `packages/node-sdk/src/catalog.ts`
-- `packages/node-sdk/src/catalog.test.ts`
+- `docs/specs/merge-node.md`
+- `docs/adr/0019-merge-node.md`
 
-**Estimated scope:** Medium.
+**Estimated scope:** Small.
 
-## Task 2: Add the core node catalog
+## Task 2: Add failing-first tests and the Merge executor
 
-**Description:** Describe every executor in `coreNodes`, including Switch's
-dynamic case ports and HTTP's bounded numeric fields.
+**Description:** Implement a pass-through executor and prove append ordering and
+non-waiting behavior with the real core nodes.
 
 **Acceptance criteria:**
 
-- [x] `coreNodeCatalog` has one entry per executor.
-- [x] Every entry passes `parseNodeCatalog`.
-- [x] Switch declares the fixed `default` port plus dynamic case ports.
+- [x] Two branches fan into Merge and produce items in queue order.
+- [x] A Switch route reaches Merge without waiting for the other branch.
+- [x] The input item is unchanged and the trace detail is `appended`.
 
-**Verification:** `bunx vitest run packages/nodes-core/src/catalog.test.ts`.
+**Verification:** `bunx vitest run packages/nodes-core/src/merge.test.ts`.
 
 **Dependencies:** Task 1.
 
 **Files likely touched:**
 
-- `packages/nodes-core/src/catalog.ts`
-- `packages/nodes-core/src/catalog.test.ts`
 - `packages/nodes-core/src/index.ts`
+- `packages/nodes-core/src/merge.test.ts`
 
-**Estimated scope:** Medium.
+**Estimated scope:** Small.
 
-## Task 3: Add the `nodes` CLI command
+## Task 3: Add catalog and CLI coverage
 
-**Description:** Print the core catalog in a readable form or as JSON.
+**Description:** Describe Merge in `coreNodeCatalog` and prove it appears in the
+CLI.
 
 **Acceptance criteria:**
 
-- [x] `krypton nodes` lists node types, ports, and parameters.
-- [x] `krypton nodes --json` prints a parseable catalog.
-- [x] Unknown options fail with usage text.
+- [x] Catalog has one `merge` entry with one input, one output, no parameters.
+- [x] Registry/catalog completeness still passes.
+- [x] `krypton nodes` lists Merge.
 
-**Verification:** `bunx vitest run apps/cli/src/main.test.ts`.
+**Verification:** `bunx vitest run packages/nodes-core/src/catalog.test.ts apps/cli/src/main.test.ts`.
 
 **Dependencies:** Task 2.
 
 **Files likely touched:**
 
-- `apps/cli/src/main.ts`
+- `packages/nodes-core/src/catalog.ts`
+- `packages/nodes-core/src/catalog.test.ts`
 - `apps/cli/src/main.test.ts`
 
 **Estimated scope:** Small.
 
-## Task 4: Record the decision
+## Task 4: Documentation
 
-**Description:** Add ADR 0018 and a short catalog guide, then update indexes.
+**Description:** Add the node guide and update indexes and the glossary.
 
 **Acceptance criteria:**
 
-- [x] ADR records the typed-catalog choice and rejected alternatives.
-- [x] Guide explains the contract, CLI usage, and adding a node.
-- [x] Documentation links resolve.
+- [x] Guide explains append behavior and the no-barrier limit.
+- [x] Docs index and ADR index link the new pages.
+- [x] Glossary defines append merge.
 
-**Verification:** `bun scripts/check-doc-links.ts` and final `bun run check`.
+**Verification:** `bun scripts/check-doc-links.ts`.
 
 **Dependencies:** Tasks 1–3.
 
 **Files likely touched:**
 
-- `docs/adr/0018-node-catalog.md`
-- `docs/adr/README.md`
-- `docs/nodes/catalog.md`
+- `docs/nodes/merge.md`
 - `docs/README.md`
-- `packages/node-sdk/README.md`
-- `packages/nodes-core/README.md`
+- `docs/adr/README.md`
+- `docs/GLOSSARY.md`
 
 **Estimated scope:** Small.
 
@@ -98,4 +94,4 @@ dynamic case ports and HTTP's bounded numeric fields.
 - [x] `BASE_SHA=main bun run check` passes.
 - [x] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
 - [x] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
-- [x] Review the diff; no engine, node behavior, or UI changes are included.
+- [x] Review the diff; no engine behavior changes.

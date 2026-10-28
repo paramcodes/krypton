@@ -21,6 +21,11 @@ const manualTrigger: NodeExecutor = async ({ item }) => ({
   outputs: [{ port: "main", items: [item] }],
 });
 
+const merge: NodeExecutor = async ({ item }) => ({
+  outputs: [{ port: "main", items: [item] }],
+  detail: "appended",
+});
+
 const set: NodeExecutor = async ({ item, parameters }) => {
   const values = parameters["values"];
   const fields = values === undefined ? {} : values;
@@ -357,6 +362,7 @@ export const coreNodes: Readonly<Record<string, NodeExecutor>> = {
   set,
   if: branch,
   switch: switchNode,
+  merge,
   "http-request": httpRequest,
 };
 

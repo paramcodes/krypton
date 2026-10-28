@@ -101,6 +101,22 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     ],
   },
   {
+    type: "merge",
+    label: "Merge",
+    description:
+      "Appends items from multiple incoming branches in engine queue order without waiting.",
+    category: "flow",
+    inputs: [
+      {
+        name: "main",
+        label: "Main",
+        description: "Accepts any number of incoming connections.",
+      },
+    ],
+    outputs: [{ name: "main", label: "Main" }],
+    parameters: [],
+  },
+  {
     type: "http-request",
     label: "HTTP Request",
     description: "Sends an HTTP request and adds the response to the item.",

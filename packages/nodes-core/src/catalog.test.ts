@@ -47,6 +47,13 @@ describe("core node catalog", () => {
       { key: "cases", kind: "list", required: true, minItems: 1 },
     ]);
 
+    const merge = entry("merge");
+    expect(merge.category).toBe("flow");
+    expect(merge.inputs.map((port) => port.name)).toEqual(["main"]);
+    expect(merge.inputs[0]?.description).toContain("any number");
+    expect(merge.outputs.map((port) => port.name)).toEqual(["main"]);
+    expect(merge.parameters).toEqual([]);
+
     const http = entry("http-request");
     expect(http.category).toBe("network");
     expect(http.parameters.find((field) => field.key === "url")).toMatchObject({
