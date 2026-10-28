@@ -130,10 +130,10 @@ guard passed.
 
 - [x] The diff is small enough for a human to walk through.
 - [x] The review confirms boundaries, tests, docs, and AGPL compatibility.
-- [ ] A PR is opened on `stage-1-error-routes`.
-- [ ] No merge to `main` without explicit permission.
+- [x] A PR is opened on `stage-1-error-routes`.
+- [x] No merge to `main` without explicit permission.
 
-**Verification:** Review findings and PR link.
+**Verification:** Review findings and PR link: [#10](https://github.com/paramcodes/krypton/pull/10).
 
 **Dependencies:** Task 5.
 
