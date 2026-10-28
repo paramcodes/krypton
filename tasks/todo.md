@@ -1,64 +1,95 @@
-# Tasks: Bun typechecker
+# Tasks: Node catalog
 
-## Task 1: Verify checker parity
+## Task 1: Add catalog types and parser
 
-**Description:** Compare Bun's built-in checker with the pinned TypeScript
-compiler on the current tree, including strict compiler flags.
+**Description:** Define the node metadata contract in `@krypton/node-sdk` and
+validate untrusted catalog values at the boundary.
 
 **Acceptance criteria:**
 
-- [x] Both checkers cover the same project files.
-- [x] Probe errors are identical in code, message, and position.
+- [x] Catalog entries, ports, dynamic outputs, and all parameter kinds are typed.
+- [x] Parser rejects duplicate types, ports, keys, invalid defaults, and bounds.
+- [x] A JSON round trip of a valid catalog parses cleanly.
 
-**Verification:** Temporary probe under `scripts/`, both checkers run with
-`--no-pretty`, output compared, probe removed.
+**Verification:** `bunx vitest run packages/node-sdk/src/catalog.test.ts`.
 
 **Dependencies:** None.
 
-**Files likely touched:** None.
+**Files likely touched:**
 
-**Estimated scope:** Small.
+- `packages/node-sdk/package.json`
+- `packages/node-sdk/src/index.ts`
+- `packages/node-sdk/src/catalog.ts`
+- `packages/node-sdk/src/catalog.test.ts`
 
-## Task 2: Switch the fast-gate typecheck
+**Estimated scope:** Medium.
 
-**Description:** Point the `typecheck` script at Bun's checker and keep the
-pinned compiler for the build gate.
+## Task 2: Add the core node catalog
+
+**Description:** Describe every executor in `coreNodes`, including Switch's
+dynamic case ports and HTTP's bounded numeric fields.
 
 **Acceptance criteria:**
 
-- [x] `typecheck` is `bun check --no-script`.
-- [x] `build` remains `tsc --noEmit`.
+- [x] `coreNodeCatalog` has one entry per executor.
+- [x] Every entry passes `parseNodeCatalog`.
+- [x] Switch declares the fixed `default` port plus dynamic case ports.
 
-**Verification:** `bun run typecheck`, `bun run check`, `bun run build`.
+**Verification:** `bunx vitest run packages/nodes-core/src/catalog.test.ts`.
 
 **Dependencies:** Task 1.
 
 **Files likely touched:**
 
-- `package.json`
+- `packages/nodes-core/src/catalog.ts`
+- `packages/nodes-core/src/catalog.test.ts`
+- `packages/nodes-core/src/index.ts`
 
-**Estimated scope:** Small.
+**Estimated scope:** Medium.
 
-## Task 3: Record the decision
+## Task 3: Add the `nodes` CLI command
 
-**Description:** Add ADR 0017 and update the runtime constraints to name both
-commands.
+**Description:** Print the core catalog in a readable form or as JSON.
 
 **Acceptance criteria:**
 
-- [x] ADR records the split, alternatives, and drift risk.
-- [x] `CONSTRAINTS.md` names the fast checker and authoritative build check.
+- [x] `krypton nodes` lists node types, ports, and parameters.
+- [x] `krypton nodes --json` prints a parseable catalog.
+- [x] Unknown options fail with usage text.
+
+**Verification:** `bunx vitest run apps/cli/src/main.test.ts`.
+
+**Dependencies:** Task 2.
+
+**Files likely touched:**
+
+- `apps/cli/src/main.ts`
+- `apps/cli/src/main.test.ts`
+
+**Estimated scope:** Small.
+
+## Task 4: Record the decision
+
+**Description:** Add ADR 0018 and a short catalog guide, then update indexes.
+
+**Acceptance criteria:**
+
+- [x] ADR records the typed-catalog choice and rejected alternatives.
+- [x] Guide explains the contract, CLI usage, and adding a node.
 - [x] Documentation links resolve.
 
 **Verification:** `bun scripts/check-doc-links.ts` and final `bun run check`.
 
-**Dependencies:** Tasks 1–2.
+**Dependencies:** Tasks 1–3.
 
 **Files likely touched:**
 
-- `docs/adr/0017-bun-typechecker.md`
+- `docs/adr/0018-node-catalog.md`
 - `docs/adr/README.md`
-- `CONSTRAINTS.md`
+- `docs/nodes/catalog.md`
+- `docs/README.md`
+- `packages/node-sdk/README.md`
+- `packages/nodes-core/README.md`
 
 **Estimated scope:** Small.
 
@@ -67,4 +98,4 @@ commands.
 - [x] `BASE_SHA=main bun run check` passes.
 - [x] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
 - [x] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
-- [x] Review the diff; no node, package, or build-behavior changes are included.
+- [x] Review the diff; no engine, node behavior, or UI changes are included.

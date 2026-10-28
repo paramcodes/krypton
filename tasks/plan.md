@@ -1,43 +1,56 @@
-# Implementation Plan: Bun typechecker
+# Implementation Plan: Node catalog
 
 ## Overview
 
-Use Bun 1.4.4's built-in checker for the fast-gate `typecheck` command. Keep the
-pinned `tsc --noEmit` as the build gate so the authoritative compiler check is
-unchanged. No bundling or artifact changes are part of this slice.
+Add a typed, validated catalog of node ports and parameter fields in
+`@krypton/node-sdk`, populate it for every core node, and expose it through
+`krypton nodes [--json]`. This is the metadata contract for the future editor,
+not an editor implementation.
 
 ## Architecture Decisions
 
-- `typecheck` runs `bun check --no-script`; the flag prevents recursion into the
-  root `check` script.
-- `build` stays `tsc --noEmit`. CI continues to verify with the pinned
-  TypeScript 7.0.2.
-- `bun build` is out of scope: the current build is a no-emit verification, not
-  artifact production.
-- The Bun and TypeScript pins move together.
+- Keep metadata in `node-sdk`; `engine` remains unaware of built-in node types.
+- Use a small discriminated union instead of JSON Schema or a new dependency.
+  It covers nested Switch cases without adopting a general schema vocabulary.
+- Keep executors authoritative for resolved parameter validation. The catalog
+  describes shape for forms.
+- Enforce catalog/registry completeness with a test in `nodes-core`.
+- Validate catalog input at the boundary so third-party catalogs can reuse the
+  parser later.
 
 ## Task List
 
-### Phase 1: Verify parity
+### Phase 1: Catalog contract
 
-- [x] Task 1: Compare checked-file coverage and strict diagnostics against tsc.
+- [x] Task 1: Add catalog types and parser with failing-first tests.
 
-### Checkpoint: Parity
+### Checkpoint: Contract
 
-- [x] Both checkers cover the same 37 project files.
-- [x] Probe errors for strict flags match tsc exactly.
+- [x] Valid entries parse and round-trip through JSON.
+- [x] Duplicate types, ports, keys, invalid defaults, and malformed fields fail.
 
-### Phase 2: Switch the fast gate
+### Phase 2: Core metadata
 
-- [x] Task 2: Update the `typecheck` script and run it.
+- [x] Task 2: Add `coreNodeCatalog` for all current core nodes.
 
-### Checkpoint: Fast gate
+### Checkpoint: Core catalog
 
-- [x] `bun run typecheck`, `bun run check`, and `bun run build` pass.
+- [x] Every executor has exactly one entry and every entry parses.
+- [x] Switch declares its fixed `default` port and dynamic case ports.
 
-### Phase 3: Record the decision
+### Phase 3: Consumption
 
-- [x] Task 3: Add ADR 0017 and update the runtime constraints.
+- [x] Task 3: Add `krypton nodes [--json]` and tests.
+
+### Checkpoint: CLI
+
+- [x] Readable output lists nodes, ports, and parameters.
+- [x] `--json` output parses and matches the catalog.
+- [x] Unknown options fail with usage.
+
+### Phase 4: Record
+
+- [x] Task 4: Add ADR 0018 and catalog documentation.
 
 ### Checkpoint: Complete
 
@@ -47,12 +60,13 @@ unchanged. No bundling or artifact changes are part of this slice.
 
 ## Risks and Mitigations
 
-| Risk                                           | Impact | Mitigation                                                   |
-| ---------------------------------------------- | ------ | ------------------------------------------------------------ |
-| Bun's embedded TypeScript drifts from the pin. | Medium | `build` still runs `tsc --noEmit`; bump both pins together.  |
-| `bun check` resolves to the package script.    | Low    | Use `--no-script`; the gate exercises the exact command.     |
-| The checker skips files that tsc includes.     | Medium | File-set and diagnostic parity verified; build gate remains. |
+| Risk                                               | Impact | Mitigation                                                       |
+| -------------------------------------------------- | ------ | ---------------------------------------------------------------- |
+| Catalog metadata drifts from executor behavior.    | Medium | Registry completeness test; executors stay authoritative.        |
+| A field kind cannot express a future node.         | Low    | Extend the union with the first consumer, not speculatively.     |
+| Users expect an editor from "UI parameter schema". | Medium | Document that this is the editor contract, not React components. |
+| Third-party catalogs inject unsafe text.           | Low    | Parse at the boundary and reject control characters.             |
 
 ## Open Questions
 
-- None. A real build and artifact pipeline remains separate work.
+- None for this slice. A real editor remains Stage 3 work.

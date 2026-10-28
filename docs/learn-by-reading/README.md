@@ -20,7 +20,10 @@ each step builds on the previous one.
    — a flaky HTTP request, fake ports, retry attempts, and a readable trace.
 9. [`packages/nodes-core/src/switch.test.ts`](../../packages/nodes-core/src/switch.test.ts)
    — exact scalar matching, named ports, and a readable branch trace.
-10. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
+10. [`packages/node-sdk/src/catalog.test.ts`](../../packages/node-sdk/src/catalog.test.ts)
+    and [`packages/nodes-core/src/catalog.test.ts`](../../packages/nodes-core/src/catalog.test.ts)
+    — the editor-facing node contract and its boundary checks.
+11. [`docs/adr/0005-test-strategy.md`](../adr/0005-test-strategy.md) — how the
     engine is tested.
 
 ## Exercises
@@ -34,9 +37,11 @@ each step builds on the previous one.
 
 Stage 1 adds the pure engine, a deterministic simulation, built-in nodes, safe
 field expressions, bounded retries, HTTP requests, per-node timeouts, a Switch
-node, and readable execution traces. The CLI,
+node, a node catalog for the future editor, and readable execution traces. The
+CLI,
 [`triage.test.ts`](../../packages/nodes-core/src/triage.test.ts),
 [`expression.test.ts`](../../packages/engine/src/expression.test.ts), and
 [`http.test.ts`](../../packages/nodes-core/src/http.test.ts) plus
-[`switch.test.ts`](../../packages/nodes-core/src/switch.test.ts) show the
-current slice.
+[`switch.test.ts`](../../packages/nodes-core/src/switch.test.ts) and the
+[`catalog`](../../packages/node-sdk/src/catalog.test.ts) tests show the current
+slice.

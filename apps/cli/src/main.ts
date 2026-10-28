@@ -2,7 +2,7 @@
 import { readFile, stat } from "node:fs/promises";
 
 import { escapeTerminalText, formatTrace, runWorkflow, type Clock } from "@krypton/engine";
-import { coreNodes } from "@krypton/nodes-core";
+import { coreNodeCatalog, coreNodes } from "@krypton/nodes-core";
 import { parseJsonObject, parseWorkflow } from "@krypton/schema";
 
 import { createHttpPort } from "./http.ts";
@@ -10,9 +10,11 @@ import { createHttpPort } from "./http.ts";
 const MAX_INPUT_BYTES = 1_000_000;
 
 const USAGE = `Usage: krypton run <workflow.json> [--input <input.json>]
+       krypton nodes [--json]
 
 Runs a workflow with the built-in nodes and prints the trace, then the final
-output items as JSON.`;
+output items as JSON. Use "nodes" to list built-in node types, their ports, and
+their parameters; add --json for the machine-readable catalog.`;
 
 const writeOut = (message: string): void => {
   process.stdout.write(`${message}\n`);
@@ -36,6 +38,59 @@ const formatJsonForTerminal = (value: unknown): string => {
     /[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
     (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
   );
+};
+
+const formatPorts = (
+  ports: readonly { readonly name: string; readonly label: string }[],
+): string =>
+  ports.length === 0 ? "none" : ports.map((port) => `${port.name} (${port.label})`).join(", ");
+
+const formatNodeCatalog = (): string =>
+  coreNodeCatalog
+    .map((node) => {
+      const dynamic = node.dynamicOutputs === undefined ? "" : `, + ${node.dynamicOutputs.label}`;
+      const parameters =
+        node.parameters.length === 0
+          ? "none"
+          : node.parameters
+              .map(
+                (field) =>
+                  `${field.key} (${field.kind}${field.required === true ? ", required" : ""})`,
+              )
+              .join(", ");
+
+      return [
+        `${node.type} — ${node.label} [${node.category}]`,
+        `  ${node.description}`,
+        `  Inputs: ${formatPorts(node.inputs)}`,
+        `  Outputs: ${formatPorts(node.outputs)}${dynamic}`,
+        `  Parameters: ${parameters}`,
+      ].join("\n");
+    })
+    .join("\n\n");
+
+const runNodes = (args: readonly string[]): number => {
+  let json = false;
+
+  for (const arg of args) {
+    if (arg === "--json") {
+      if (json) {
+        writeUsageError('The "--json" option may be used only once.');
+        return 1;
+      }
+      json = true;
+      continue;
+    }
+    if (arg === "--help" || arg === "-h") {
+      writeOut(USAGE);
+      return 0;
+    }
+    writeUsageError(`Unknown option "${escapeTerminalText(arg)}".`);
+    return 1;
+  }
+
+  writeOut(json ? formatJsonForTerminal(coreNodeCatalog) : formatNodeCatalog());
+  return 0;
 };
 
 const readJson = async (path: string): Promise<unknown> => {
@@ -121,6 +176,10 @@ const run = async (): Promise<number> => {
   if (command === "--help" || command === "-h") {
     writeOut(USAGE);
     return 0;
+  }
+
+  if (command === "nodes") {
+    return runNodes(args.slice(1));
   }
 
   if (command !== "run") {

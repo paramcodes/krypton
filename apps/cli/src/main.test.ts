@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-const runCli = (args: readonly string[]): ReturnType<typeof spawnSync> =>
+const runCli = (args: readonly string[]) =>
   spawnSync(process.execPath, ["apps/cli/src/main.ts", ...args], {
     cwd: ROOT,
     encoding: "utf8",
@@ -34,6 +34,36 @@ describe("krypton CLI", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Usage: krypton run");
+  });
+
+  it("lists built-in node metadata", () => {
+    const result = runCli(["nodes"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stdout).toContain("http-request — HTTP Request [network]");
+    expect(result.stdout).toContain("switch — Switch [flow]");
+    expect(result.stdout).toContain("cases (list, required)");
+    expect(result.stdout).toContain("Case ports");
+  });
+
+  it("prints the catalog as JSON", () => {
+    const result = runCli(["nodes", "--json"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    const parsed: unknown = JSON.parse(result.stdout);
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(result.stdout).toContain('"type": "manual-trigger"');
+    expect(result.stdout).toContain('"type": "http-request"');
+  });
+
+  it("rejects unknown nodes options", () => {
+    const result = runCli(["nodes", "--verbose"]);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("Unknown option");
+    expect(result.stderr).toContain("Usage: krypton run");
   });
 
   it("escapes terminal control characters in error messages", () => {
