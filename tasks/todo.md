@@ -1,102 +1,101 @@
-# Tasks: Node error policies and error routes
+# Tasks: Graph property tests
 
-## Task 1: Define the contract and schema shape
+## Task 1: Add the pinned property-test dependency
 
-**Description:** Record the decision and add the parsed `errorPolicy` field.
+**Description:** Add `fast-check` as a dev dependency of `@krypton/engine` without
+changing runtime packages.
 
 **Acceptance criteria:**
 
-- [x] ADR 0021 records the policy, port, item, trace, and status decisions.
-- [x] The error-route specification states exact behavior and exclusions.
-- [x] `ErrorPolicy` is exported and `NodeInstance` accepts `errorPolicy`.
-- [x] Schema tests cover omitted, `fail`, `skip`, `route`, and invalid values.
+- [x] `fast-check` is pinned exactly at `4.10.2`.
+- [x] The release is older than two weeks and the lockfile records the package.
+- [x] The dependency is dev-only.
+- [x] The test-only import has a reviewed guardrail exception.
+- [x] ADR 0022 records the decision, exception, and alternatives.
 
-**Verification:** Targeted schema tests.
+**Verification:** `package.json`, `bun.lock`, and ADR 0022 review.
 
 **Files touched:**
 
-- `docs/adr/0021-node-error-routes.md`
-- `docs/specs/error-routes.md`
-- `packages/schema/src/workflow.ts`
-- `packages/schema/src/index.ts`
-- `packages/schema/src/workflow.test.ts`
+- `packages/engine/package.json`
+- `bun.lock`
+- `scripts/guardrails-allowlist.json`
+- `docs/adr/0022-property-tests-with-fast-check.md`
+- `docs/adr/README.md`
 
 **Estimated scope:** Small.
 
-## Task 2: Implement policy handling in the engine
+## Task 2: Generate valid graphs and prove the engine never throws
 
-**Description:** Apply fail, skip, and route behavior to executor failures.
+**Description:** Build structurally valid raw workflows from a bounded generator and
+run them through the parser and engine with fake ports.
 
 **Acceptance criteria:**
 
-- [x] Policy is validated before node execution.
-- [x] Ordinary errors and retry exhaustion use the policy.
-- [x] Timeouts use the policy but are never retried.
-- [x] Parameter, invalid-result, unknown-type, cancellation, retry-sleep, queue,
-      malformed-connection, and budget failures bypass the policy.
-- [x] Route creates the specified error item, fans out to every error edge, and
-      fails visibly when no edge exists.
-- [x] Trace and run status match the specification.
+- [x] The generator creates one to eight unique node IDs.
+- [x] Nodes use known test types and JSON objects for parameters.
+- [x] Connections use existing endpoints and optional named source ports.
+- [x] Parsing and running never throw.
+- [x] Execution uses bounded steps and queue size, fake ports, and a trace assertion.
 
-**Verification:** Targeted engine tests, typecheck, and lint.
-
-**Dependencies:** Task 1.
+**Verification:** Targeted property test.
 
 **Files touched:**
 
-- `packages/engine/src/run.ts`
-- `packages/engine/src/node.ts`
-- `packages/engine/src/index.ts`
-- `packages/engine/src/run.test.ts`
-- `packages/engine/src/node.test.ts`
+- `packages/engine/src/graph.property.test.ts`
 
 **Estimated scope:** Medium.
 
-## Task 3: Expose the standard error port
+## Task 3: Reject invalid graphs with clear schema errors
 
-**Description:** Declare the engine-provided port and protect it from collision.
+**Description:** Mutate valid workflows into known invalid shapes and assert the
+parser rejects each with a useful error.
 
 **Acceptance criteria:**
 
-- [x] Every core catalog entry has exactly one `error` output.
-- [x] The CLI lists `error (Error)`.
-- [x] Switch rejects a case port named `error`.
-- [x] A real HTTP node routes a failed request after retries.
+- [x] Duplicate IDs, unknown endpoints, empty nodes, and invalid expression versions are covered.
+- [x] Invalid retry, timeout, and error-policy values are covered.
+- [x] Non-JSON parameters and control characters in IDs are covered.
+- [x] Every case throws `SchemaError`.
+- [x] Each mutation kind gets its own 100-run property.
+- [x] Every error has the expected `$`-rooted field path and message.
 
-**Verification:** Catalog, switch, CLI, and error-route expect tests.
-
-**Dependencies:** Tasks 1 and 2.
+**Verification:** Targeted property test.
 
 **Files touched:**
 
-- `packages/nodes-core/src/catalog.ts`
-- `packages/nodes-core/src/index.ts`
-- `packages/nodes-core/src/catalog.test.ts`
-- `packages/nodes-core/src/nodes.test.ts`
-- `packages/nodes-core/src/error-routes.test.ts`
-- `apps/cli/src/main.test.ts`
+- `packages/engine/src/graph.property.test.ts`
 
 **Estimated scope:** Small.
 
 ## Task 4: Update documentation and the learning path
 
-**Description:** Make the new decision and behavior discoverable.
+**Description:** Make the dependency decision, property-test scope, and vocabulary
+discoverable.
 
 **Acceptance criteria:**
 
-- [x] The user guide explains retries, error items, paths, and status.
-- [x] ADR indexes and related ADRs point to ADR 0021.
-- [x] Architecture, catalog, Switch, and timeout docs are consistent.
-- [x] Glossary terms and the learn-by-reading path are updated.
-- [x] The Loop-specific plan and todo files are replaced.
+- [x] ADR 0022 and the ADR index describe the decision.
+- [x] The test-strategy ADR points to the property-test decision.
+- [x] The glossary defines a property test.
+- [x] The learn-by-reading path includes the new test.
+- [x] This plan and todo replace the merged error-route slice.
 
-**Verification:** `bun scripts/check-doc-links.ts` and the full gate.
+**Verification:** Documentation review and the full gate.
 
 **Dependencies:** Tasks 1-3.
 
-**Files touched:** Documentation listed in the specification.
+**Files touched:**
 
-**Estimated scope:** Medium.
+- `docs/adr/0022-property-tests-with-fast-check.md`
+- `docs/adr/README.md`
+- `docs/adr/0005-test-strategy.md`
+- `docs/GLOSSARY.md`
+- `docs/learn-by-reading/README.md`
+- `tasks/plan.md`
+- `tasks/todo.md`
+
+**Estimated scope:** Small.
 
 ## Task 5: Run the full quality gate
 
@@ -104,19 +103,21 @@
 
 **Acceptance criteria:**
 
+- [x] `bun run format` leaves the tree clean.
+- [x] The targeted property test passes.
 - [x] `bun run check` passes.
 - [x] `bun run build` passes.
 - [x] `bun run test:coverage` passes.
 - [x] `bun run e2e` passes.
 - [x] `BASE_SHA=main bun run guardrails:deleted-tests` passes.
 
-**Verification:** Paste command output into the review.
+**Result (2026-10-28):** The targeted property test passed with 12 tests.
+`bun run check` passed with 209 tests, clean guardrails, formatting, lint, and
+typecheck. `bun run build` passed. Coverage passed at 96.76% statements, 93.31%
+branches, 98.73% functions, and 96.7% lines. The Playwright smoke test and the
+deleted-test guard passed.
 
-**Result (2026-10-28):** `BASE_SHA=main bun run check` passed with 197
-tests, clean guardrails, formatting, lint, and typecheck. `bun run build`
-passed. Coverage passed at 96.76% statements, 93.31% branches, 98.73%
-functions, and 96.7% lines. The Playwright smoke test and the deleted-test
-guard passed.
+**Verification:** Paste command output into the review.
 
 **Dependencies:** Tasks 1-4.
 
@@ -130,10 +131,12 @@ guard passed.
 
 - [x] The diff is small enough for a human to walk through.
 - [x] The review confirms boundaries, tests, docs, and AGPL compatibility.
-- [x] A PR is opened on `stage-1-error-routes`.
-- [x] No merge to `main` without explicit permission.
+- [ ] A PR is opened on `stage-1-graph-property-test`.
+- [ ] No merge to `main` without explicit permission.
 
-**Verification:** Review findings and PR link: [#10](https://github.com/paramcodes/krypton/pull/10).
+**Verification:** Review findings and PR link. The independent review required
+field-specific schema assertions; the final test asserts the exact path and
+message for every mutation kind.
 
 **Dependencies:** Task 5.
 

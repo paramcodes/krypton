@@ -38,8 +38,9 @@ assertion override. Inside `packages/engine` the script additionally rejects
 `Date.now`, `new Date`, `Math.random`, `fetch`, `process`, `crypto`, `Buffer`,
 `performance`, timers, `WebSocket`, `console`, and `require`. It also rejects
 non-relative imports from the pure packages unless they are explicitly allowed
-(`@krypton/schema`, plus `vitest` in test files). `react/no-danger` and the
-script reject raw HTML in the web source.
+(`@krypton/schema`, plus `vitest` in test files and the reviewed `fast-check`
+property-test exception). `react/no-danger` and the script reject raw HTML in
+the web source.
 
 The deleted-test script finds renames and copies with `git diff -M -C -z`, fails
 a deleted test, a test renamed to a non-test path, or a modification that removes
