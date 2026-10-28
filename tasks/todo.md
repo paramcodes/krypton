@@ -12,7 +12,12 @@
 - [x] Update the Stage 1 status wording without claiming the teach-back is reviewed.
 - [x] Run the full gate: format, check, build, coverage, e2e, and deleted-tests.
 - [x] Get an independent explainer review and fix the findings.
-- [ ] Review the diff and open the teach-back PR; do not merge without permission.
+- [x] Review the diff and open the teach-back PR; do not merge without permission.
+- [ ] Human review of the teach-back and the PR.
+
+## Pull request
+
+- [#12 Add Stage 1 teach-back](https://github.com/paramcodes/krypton/pull/12)
 
 ## Gate result (2026-10-28)
 
