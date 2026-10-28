@@ -4,6 +4,11 @@
 - Date: 2026-10-27
 - Deciders: project owner, engine implementation owner
 
+> [ADR 0021](0021-node-error-routes.md) later adds per-node error policies. A
+> timeout remains non-retryable, but `skip` and `route` can now handle the failed
+> attempt instead of failing the run. Without a policy, the timeout still fails
+> the run.
+
 ## Context
 
 [ADR 0014](0014-http-request-and-retries.md) added the HTTP request timeout,
@@ -25,12 +30,14 @@ release resources through its `AbortSignal`.
 - When the deadline wins, the engine aborts the child signal, stops awaiting the
   attempt, and records `Node timed out after Nms.` on the node's failed trace
   line. A late result is ignored and cannot advance the workflow.
-- Timeout failures are terminal, even if the node has a retry policy. A timed
-  out external operation may have taken effect even though its completion is
-  unknown; retrying it automatically could duplicate that effect.
+- Timeout failures are terminal for the retry loop, even if the node has a retry
+  policy. A timed out external operation may have taken effect even though its
+  completion is unknown; retrying it automatically could duplicate that effect.
+  [ADR 0021](0021-node-error-routes.md) can skip or route the failed attempt
+  instead of failing the run.
 - The engine cannot forcibly terminate executor code. Executors and adapters
   must honor the signal to stop their own work. A non-cooperative executor may
-  continue in the background after the engine has failed the run.
+  continue in the background after the engine has stopped waiting for it.
 - HTTP's `parameters.timeoutMs` remains an independent socket/request deadline.
   The node-instance `timeoutMs` is the wider engine deadline; whichever fires
   first determines the attempt failure.
@@ -61,8 +68,8 @@ release resources through its `AbortSignal`.
 - Timeout behavior is deterministic with fake clocks, including cancellation
   and late-result tests.
 - A timed-out non-cooperative executor can continue consuming resources after
-  the run has failed; node authors must observe cancellation, and user code
-  still requires an isolated sandbox.
+  the engine has stopped waiting for it; node authors must observe cancellation,
+  and user code still requires an isolated sandbox.
 
 ## Revisit when
 

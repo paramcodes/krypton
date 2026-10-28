@@ -23,7 +23,8 @@ and uses the engine's existing named-port connections to continue the workflow.
 - Case values must be unique and compare with strict, same-type equality. For
   example, number `1` does not match string `"1"`.
 - Different case values may share one port to group routes.
-- Port names may not contain control characters.
+- Port names may not contain control characters or use the reserved engine name
+  `error`.
 
 Parameters support the existing whole-field expression syntax, so `value` and
 case values can be selected per item. Validation runs after expression
@@ -49,5 +50,10 @@ using that exact output name:
 The Switch node does not inspect graph connections or perform fan-out itself;
 the engine routes items along connections whose source port matches the emitted
 port. The readable trace reports the selected route, for example `switch paid`.
+
+The node also has the standard engine-level `error` output. It is only used when
+the node instance's `errorPolicy` is `route` and the node fails; a Switch case
+port cannot use that reserved name. See
+[error policies and error routes](../error-routes.md).
 
 See [ADR 0016](../adr/0016-switch-node.md) for the design decision.

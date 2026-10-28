@@ -1,155 +1,140 @@
-# Tasks: Loop over items node
+# Tasks: Node error policies and error routes
 
-## Task 1: Write the Loop spec and ADR
+## Task 1: Define the contract and schema shape
 
-**Description:** Define the graph cycle, state shape, result shape, and bounds.
-
-**Acceptance criteria:**
-
-- [x] Spec covers ports, parameters, state, results, empty arrays, and failures.
-- [x] ADR records alternatives: sub-workflow runtime, stateful executor,
-      iterator/collector split, and top-level state.
-- [x] Re-evaluation of `items` on continuation is documented.
-
-**Verification:** `bun scripts/check-doc-links.ts`.
-
-**Dependencies:** Merge slice merged.
-
-**Files likely touched:**
-
-- `docs/specs/loop-node.md`
-- `docs/adr/0020-loop-node.md`
-
-**Estimated scope:** Medium.
-
-## Task 2: Add failing-first expect tests
-
-**Description:** Prove the full graph cycle with the real core nodes.
+**Description:** Record the decision and add the parsed `errorPolicy` field.
 
 **Acceptance criteria:**
 
-- [x] Two items run the body twice and produce two results and one done item.
-- [x] The trace reads `loop 1/2`, `loop 2/2`, `done 2 results`.
-- [x] An empty array emits `done 0 results` without running the body.
-- [x] A nested loop does not leak internal state into results.
-- [x] A zero-return body leaves the run successful with no `done` output.
-- [x] Forged state is stripped at the manual trigger.
+- [x] ADR 0021 records the policy, port, item, trace, and status decisions.
+- [x] The error-route specification states exact behavior and exclusions.
+- [x] `ErrorPolicy` is exported and `NodeInstance` accepts `errorPolicy`.
+- [x] Schema tests cover omitted, `fail`, `skip`, `route`, and invalid values.
 
-**Verification:** `bunx vitest run packages/nodes-core/src/loop.test.ts`.
+**Verification:** Targeted schema tests.
+
+**Files touched:**
+
+- `docs/adr/0021-node-error-routes.md`
+- `docs/specs/error-routes.md`
+- `packages/schema/src/workflow.ts`
+- `packages/schema/src/index.ts`
+- `packages/schema/src/workflow.test.ts`
+
+**Estimated scope:** Small.
+
+## Task 2: Implement policy handling in the engine
+
+**Description:** Apply fail, skip, and route behavior to executor failures.
+
+**Acceptance criteria:**
+
+- [x] Policy is validated before node execution.
+- [x] Ordinary errors and retry exhaustion use the policy.
+- [x] Timeouts use the policy but are never retried.
+- [x] Parameter, invalid-result, unknown-type, cancellation, retry-sleep, queue,
+      malformed-connection, and budget failures bypass the policy.
+- [x] Route creates the specified error item, fans out to every error edge, and
+      fails visibly when no edge exists.
+- [x] Trace and run status match the specification.
+
+**Verification:** Targeted engine tests, typecheck, and lint.
 
 **Dependencies:** Task 1.
 
-**Files likely touched:**
+**Files touched:**
 
-- `packages/nodes-core/src/loop.test.ts`
-
-**Estimated scope:** Medium.
-
-## Task 3: Add executor edge-case tests
-
-**Description:** Cover continuation, bounds, malformed state, and namespacing.
-
-**Acceptance criteria:**
-
-- [x] Continuation ignores a re-evaluated `items` value.
-- [x] `maxItems`, non-object items, non-object `__krypton`, and malformed state
-      fail with clear errors.
-- [x] Results strip every reserved state field; `done` keeps enclosing state.
-- [x] Prototype-like node IDs and item keys do not hit object prototypes.
-- [x] Nested loops, fan-out, zero-return, and state removal are covered.
-
-**Verification:** `bunx vitest run packages/nodes-core/src/loop.test.ts`.
-
-**Dependencies:** Task 2.
-
-**Files likely touched:**
-
-- `packages/nodes-core/src/loop.test.ts`
-- `packages/nodes-core/src/loop.ts`
+- `packages/engine/src/run.ts`
+- `packages/engine/src/node.ts`
+- `packages/engine/src/index.ts`
+- `packages/engine/src/run.test.ts`
+- `packages/engine/src/node.test.ts`
 
 **Estimated scope:** Medium.
 
-## Task 4: Implement and register the executor
+## Task 3: Expose the standard error port
 
-**Description:** Add the stateless executor and wire it into the core registry.
+**Description:** Declare the engine-provided port and protect it from collision.
 
 **Acceptance criteria:**
 
-- [x] Initial call emits the first item on `loop`.
-- [x] Continuation appends a result and emits the next item or `done`.
-- [x] Original fields, current element, and `__krypton` state are combined.
-- [x] Empty arrays and bounds behave as specified.
-- [x] `coreNodes` exposes `loop`.
+- [x] Every core catalog entry has exactly one `error` output.
+- [x] The CLI lists `error (Error)`.
+- [x] Switch rejects a case port named `error`.
+- [x] A real HTTP node routes a failed request after retries.
 
-**Verification:** `bunx vitest run packages/nodes-core/src/loop.test.ts packages/nodes-core/src/catalog.test.ts`.
+**Verification:** Catalog, switch, CLI, and error-route expect tests.
 
-**Dependencies:** Tasks 1–3.
+**Dependencies:** Tasks 1 and 2.
 
-**Files likely touched:**
+**Files touched:**
 
-- `packages/nodes-core/src/defaults.ts`
-- `packages/nodes-core/src/loop.ts`
+- `packages/nodes-core/src/catalog.ts`
 - `packages/nodes-core/src/index.ts`
-- `packages/nodes-core/src/catalog.ts`
-
-**Estimated scope:** Medium.
-
-## Task 5: Add catalog and CLI coverage
-
-**Description:** Describe both ports and parameters, and prove the listing.
-
-**Acceptance criteria:**
-
-- [x] Catalog has one `loop` entry.
-- [x] `loop`/`done` output ports are declared.
-- [x] `items` is required JSON; `maxItems` is an integer with bounds and default.
-- [x] The 4,998 cap is tested against the default `2N + 3` step budget.
-- [x] `krypton nodes` lists Loop Over Items.
-- [x] Registry/catalog completeness and parser round-trip pass.
-
-**Verification:** `bunx vitest run packages/nodes-core/src/catalog.test.ts apps/cli/src/main.test.ts`.
-
-**Dependencies:** Task 4.
-
-**Files likely touched:**
-
-- `packages/nodes-core/src/catalog.ts`
 - `packages/nodes-core/src/catalog.test.ts`
+- `packages/nodes-core/src/nodes.test.ts`
+- `packages/nodes-core/src/error-routes.test.ts`
 - `apps/cli/src/main.test.ts`
 
 **Estimated scope:** Small.
 
-## Task 6: Documentation and indexes
+## Task 4: Update documentation and the learning path
 
-**Description:** Add the user guide, links, glossary terms, and reading path.
+**Description:** Make the new decision and behavior discoverable.
 
 **Acceptance criteria:**
 
-- [x] Guide explains the body cycle, reserved state, results, and limits.
-- [x] Guide and ADR state the trigger trust boundary and run-status limits.
-- [x] ADR 0013, 0014, and 0016 cross-reference Merge and Loop.
-- [x] Docs and ADR indexes link the new pages.
-- [x] Glossary defines loop over items and loop state.
-- [x] Learn-by-reading links the loop test.
+- [x] The user guide explains retries, error items, paths, and status.
+- [x] ADR indexes and related ADRs point to ADR 0021.
+- [x] Architecture, catalog, Switch, and timeout docs are consistent.
+- [x] Glossary terms and the learn-by-reading path are updated.
+- [x] The Loop-specific plan and todo files are replaced.
 
-**Verification:** `bun scripts/check-doc-links.ts`.
+**Verification:** `bun scripts/check-doc-links.ts` and the full gate.
 
-**Dependencies:** Tasks 1–5.
+**Dependencies:** Tasks 1-3.
 
-**Files likely touched:**
+**Files touched:** Documentation listed in the specification.
 
-- `docs/nodes/loop.md`
-- `docs/README.md`
-- `docs/adr/README.md`
-- `docs/GLOSSARY.md`
-- `docs/learn-by-reading/README.md`
-- `packages/nodes-core/README.md`
+**Estimated scope:** Medium.
+
+## Task 5: Run the full quality gate
+
+**Description:** Prove the slice meets the repository bar.
+
+**Acceptance criteria:**
+
+- [x] `bun run check` passes.
+- [x] `bun run build` passes.
+- [x] `bun run test:coverage` passes.
+- [x] `bun run e2e` passes.
+- [x] `BASE_SHA=main bun run guardrails:deleted-tests` passes.
+
+**Verification:** Paste command output into the review.
+
+**Result (2026-10-28):** `BASE_SHA=main bun run check` passed with 197
+tests, clean guardrails, formatting, lint, and typecheck. `bun run build`
+passed. Coverage passed at 96.76% statements, 93.31% branches, 98.73%
+functions, and 96.7% lines. The Playwright smoke test and the deleted-test
+guard passed.
+
+**Dependencies:** Tasks 1-4.
 
 **Estimated scope:** Small.
 
-## Checkpoint: Before PR
+## Task 6: Review and prepare the PR
 
-- [x] `BASE_SHA=main bun run check` passes.
-- [x] `bun run build`, `bun run test:coverage`, and `bun run e2e` pass.
-- [x] `BASE_SHA=main bun run guardrails:deleted-tests` is clean.
-- [x] Review the diff; no engine behavior changes.
+**Description:** Review the diff and open a PR without merging.
+
+**Acceptance criteria:**
+
+- [x] The diff is small enough for a human to walk through.
+- [x] The review confirms boundaries, tests, docs, and AGPL compatibility.
+- [x] A PR is opened on `stage-1-error-routes`.
+- [x] No merge to `main` without explicit permission.
+
+**Verification:** Review findings and PR link: [#10](https://github.com/paramcodes/krypton/pull/10).
+
+**Dependencies:** Task 5.
+
+**Estimated scope:** Small.

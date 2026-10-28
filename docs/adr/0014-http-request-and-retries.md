@@ -13,14 +13,17 @@ call for a readable flaky-HTTP expectation test.
 
 [ADR 0013](0013-engine-execution-model.md) deliberately deferred retries,
 timeouts, error ports, and joins until their semantics were decided. This ADR
-decides the HTTP request and retry slice; joins and error routes remain
-deferred. Merge and Loop are added later by ADRs 0019 and 0020.
+decides the HTTP request and retry slice; joins and error routes were deferred
+at the time. Merge, Loop, and error routes are added later by ADRs 0019, 0020,
+and 0021.
 
 > [ADR 0015](0015-node-execution-timeouts.md) later adds the generic engine
 > deadline for one node executor attempt. The HTTP request timeout below remains
 > a separate adapter-level bound.
 > [ADR 0019](0019-merge-node.md) and [ADR 0020](0020-loop-node.md) later add Merge
-> and Loop over items; true joins and error routes remain deferred.
+> and Loop over items. [ADR 0021](0021-node-error-routes.md) later adds per-node
+> error policies, so an HTTP failure can be skipped or routed after its retries
+> are exhausted.
 
 ## Decision
 

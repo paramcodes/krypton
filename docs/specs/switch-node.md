@@ -27,7 +27,8 @@ The node parameters are:
 - Each case `value` must be a JSON scalar, and case values must be unique using
   strict, same-type equality (`===`). Objects and arrays are not compared.
 - `port` must be a non-empty string without control characters. Different case
-  values may target the same port.
+  values may target the same port. The engine reserves the name `error` for
+  error routing, so a case may not use it.
 - The first matching case routes the unchanged item to its `port`.
 - If no case matches, the unchanged item routes to the fixed `default` port.
 - The node emits one output containing the item and a readable detail describing

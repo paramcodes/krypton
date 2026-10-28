@@ -1,4 +1,11 @@
-import type { Connection, JsonObject, NodeInstance, RetryPolicy, Workflow } from "@krypton/schema";
+import type {
+  Connection,
+  ErrorPolicy,
+  JsonObject,
+  NodeInstance,
+  RetryPolicy,
+  Workflow,
+} from "@krypton/schema";
 
 import {
   compileParameters,
@@ -7,6 +14,7 @@ import {
   type CompiledParameters,
 } from "./expression.ts";
 import {
+  ERROR_PORT,
   isNodeExecutionResult,
   RetryableNodeError,
   type NodeExecutionResult,
@@ -75,6 +83,24 @@ const readNodeTimeout = (node: NodeInstance): number | string | undefined => {
     return `timeoutMs must be an integer between 1 and ${MAX_NODE_TIMEOUT_MS}.`;
   }
   return timeoutMs;
+};
+
+type ErrorPolicyRead =
+  | { readonly valid: true; readonly policy: ErrorPolicy }
+  | { readonly valid: false; readonly detail: string };
+
+const readErrorPolicy = (node: NodeInstance): ErrorPolicyRead => {
+  const value: unknown = node.errorPolicy;
+  if (value === undefined || value === "fail") {
+    return { valid: true, policy: "fail" };
+  }
+  if (value === "skip" || value === "route") {
+    return { valid: true, policy: value };
+  }
+  return {
+    valid: false,
+    detail: 'errorPolicy must be "fail", "skip", or "route".',
+  };
 };
 
 const executeWithTimeout = async (
@@ -234,6 +260,7 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
 
   const compiledParameters = new Map<NodeInstance["id"], CompiledParameters>();
   const retryPolicies = new Map<NodeInstance["id"], RetryPolicy>();
+  const errorPolicies = new Map<NodeInstance["id"], ErrorPolicy>();
   const timeouts = new Map<NodeInstance["id"], number>();
   for (const node of options.workflow.nodes) {
     try {
@@ -249,6 +276,12 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
       return fail(node.id, retryPolicy);
     }
     retryPolicies.set(node.id, retryPolicy);
+
+    const errorPolicy = readErrorPolicy(node);
+    if (!errorPolicy.valid) {
+      return fail(node.id, errorPolicy.detail);
+    }
+    errorPolicies.set(node.id, errorPolicy.policy);
 
     const timeoutMs = readNodeTimeout(node);
     if (typeof timeoutMs === "string") {
@@ -298,6 +331,83 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
     return fail("workflow", `Run exceeded ${maxQueuedItems} queued items.`);
   }
 
+  const matchingEdges = (nodeId: NodeInstance["id"], port: string): readonly Connection[] =>
+    (outgoing.get(nodeId) ?? []).filter(
+      (connection) => (connection.fromPort ?? DEFAULT_PORT) === port,
+    );
+
+  const enqueueItems = (
+    from: NodeInstance,
+    edges: readonly Connection[],
+    items: readonly JsonObject[],
+  ): RunResult | undefined => {
+    for (const item of items) {
+      for (const connection of edges) {
+        if (queue.length >= maxQueuedItems) {
+          return fail("workflow", `Run exceeded ${maxQueuedItems} queued items.`);
+        }
+        const target = nodesById.get(connection.to);
+        if (target === undefined) {
+          return fail(from.id, `Connection points to unknown node "${connection.to}".`);
+        }
+        queue.push({ node: target, item });
+      }
+    }
+    return undefined;
+  };
+
+  const handleNodeError = (
+    entry: QueueEntry,
+    message: string,
+    attempts: number,
+    retryable: boolean,
+    traceDetail: string,
+  ): RunResult | undefined => {
+    const policy = errorPolicies.get(entry.node.id) ?? "fail";
+
+    if (policy === "skip") {
+      trace.push({
+        atMs: elapsed(),
+        node: entry.node.id,
+        status: "skip",
+        detail: `skipped: ${traceDetail}`,
+      });
+      return undefined;
+    }
+
+    if (policy === "route") {
+      const edges = matchingEdges(entry.node.id, ERROR_PORT);
+      if (edges.length === 0) {
+        return fail(
+          entry.node.id,
+          `No "error" output is connected for a routed failure: ${traceDetail}`,
+        );
+      }
+
+      const atMs = elapsed();
+      trace.push({
+        atMs,
+        node: entry.node.id,
+        status: "fail",
+        detail: `route error: ${traceDetail}`,
+      });
+      const errorItem: JsonObject = {
+        ...entry.item,
+        error: {
+          nodeId: entry.node.id,
+          nodeType: entry.node.type,
+          message,
+          attempts,
+          retryable,
+          atMs,
+        },
+      };
+      return enqueueItems(entry.node, edges, [errorItem]);
+    }
+
+    return fail(entry.node.id, traceDetail);
+  };
+
   let steps = 0;
 
   for (const entry of queue) {
@@ -331,6 +441,7 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
     const timeoutMs = timeouts.get(entry.node.id);
     let result: NodeExecutionResult | undefined;
     let attempts = 0;
+    let handled = false;
 
     for (let attempt = 1; attempt <= retryPolicy.maxAttempts; attempt += 1) {
       if (options.signal.aborted) {
@@ -368,34 +479,46 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
           return fail("workflow", "Run cancelled.");
         }
 
-        if (!(error instanceof RetryableNodeError)) {
-          return fail(entry.node.id, errorDetail(error));
-        }
+        const retryable = error instanceof RetryableNodeError;
+        if (retryable && attempt < retryPolicy.maxAttempts) {
+          trace.push({
+            atMs: elapsed(),
+            node: entry.node.id,
+            status: "fail",
+            detail: `attempt ${attempt}/${retryPolicy.maxAttempts}: ${error.message}`,
+          });
 
-        trace.push({
-          atMs: elapsed(),
-          node: entry.node.id,
-          status: "fail",
-          detail: `attempt ${attempt}/${retryPolicy.maxAttempts}: ${error.message}`,
-        });
+          try {
+            await options.ports.clock.sleep(retryDelay(retryPolicy, attempt), options.signal);
+          } catch (sleepError) {
+            if (options.signal.aborted) {
+              return fail("workflow", "Run cancelled.");
+            }
+            return fail(entry.node.id, errorDetail(sleepError));
+          }
 
-        if (attempt >= retryPolicy.maxAttempts) {
-          return { status: "fail", trace, outputs };
-        }
-
-        try {
-          await options.ports.clock.sleep(retryDelay(retryPolicy, attempt), options.signal);
-        } catch (sleepError) {
           if (options.signal.aborted) {
             return fail("workflow", "Run cancelled.");
           }
-          return fail(entry.node.id, errorDetail(sleepError));
+          continue;
         }
 
-        if (options.signal.aborted) {
-          return fail("workflow", "Run cancelled.");
+        const message = retryable ? error.message : errorDetail(error);
+        const traceDetail =
+          retryable || attempt > 1
+            ? `attempt ${attempt}/${retryPolicy.maxAttempts}: ${message}`
+            : message;
+        const failure = handleNodeError(entry, message, attempt, retryable, traceDetail);
+        if (failure !== undefined) {
+          return failure;
         }
+        handled = true;
+        break;
       }
+    }
+
+    if (handled) {
+      continue;
     }
 
     if (result === undefined) {
@@ -410,11 +533,8 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
       detail: attempts > 1 ? `attempt ${attempts}/${retryPolicy.maxAttempts}: ${detail}` : detail,
     });
 
-    const edges = outgoing.get(entry.node.id) ?? [];
     for (const output of result.outputs) {
-      const matching = edges.filter(
-        (connection) => (connection.fromPort ?? DEFAULT_PORT) === output.port,
-      );
+      const matching = matchingEdges(entry.node.id, output.port);
 
       if (matching.length === 0) {
         for (const item of output.items) {
@@ -423,17 +543,9 @@ export const runWorkflow = async (options: RunWorkflowOptions): Promise<RunResul
         continue;
       }
 
-      for (const item of output.items) {
-        for (const connection of matching) {
-          if (queue.length >= maxQueuedItems) {
-            return fail("workflow", `Run exceeded ${maxQueuedItems} queued items.`);
-          }
-          const target = nodesById.get(connection.to);
-          if (target === undefined) {
-            return fail(entry.node.id, `Connection points to unknown node "${connection.to}".`);
-          }
-          queue.push({ node: target, item });
-        }
+      const queueFailure = enqueueItems(entry.node, matching, output.items);
+      if (queueFailure !== undefined) {
+        return queueFailure;
       }
     }
   }

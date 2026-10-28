@@ -8,6 +8,10 @@ Start here:
 - [Expressions](expressions.md) — the safe field syntax and its limits.
 - [HTTP requests](http-requests.md) — the HTTP Request node, retries, and the
   outbound security boundary.
+- [Error policies and error routes](error-routes.md) — fail, skip, or route a
+  failed node item to a recoverable path.
+- [Error route specification](specs/error-routes.md) — the exact policy, error
+  item, and trace contract.
 - [Node timeout specification](specs/node-timeouts.md) — the per-attempt
   execution deadline contract.
 - [Switch node](nodes/switch.md) — exact scalar matching over named output ports.

@@ -175,6 +175,12 @@ describe("core node parameters", () => {
       ).rejects.toThrow(/port/i);
     }
   });
+
+  it("rejects the reserved error output port", async () => {
+    await expect(
+      executor("switch")(context({ value: "other", cases: [{ value: "paid", port: "error" }] })),
+    ).rejects.toThrow(/reserved/i);
+  });
 });
 
 describe("HTTP Request node", () => {

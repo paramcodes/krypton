@@ -1,5 +1,5 @@
-import { MAX_HTTP_RESPONSE_BYTES, MAX_HTTP_TIMEOUT_MS } from "@krypton/engine";
-import type { NodeCatalogEntry } from "@krypton/node-sdk";
+import { ERROR_PORT, MAX_HTTP_RESPONSE_BYTES, MAX_HTTP_TIMEOUT_MS } from "@krypton/engine";
+import type { NodeCatalogEntry, NodePort } from "@krypton/node-sdk";
 
 import {
   DEFAULT_HTTP_MAX_RESPONSE_BYTES,
@@ -7,6 +7,12 @@ import {
   DEFAULT_LOOP_ITEM_LIMIT,
   MAX_LOOP_ITEM_LIMIT,
 } from "./defaults.ts";
+
+const errorOutput: NodePort = {
+  name: ERROR_PORT,
+  label: "Error",
+  description: "Failed item with error details when the node's errorPolicy is route.",
+};
 
 /**
  * Editor-facing metadata for the built-in nodes. Executors remain authoritative
@@ -19,7 +25,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     description: "Starts a run with the workflow input item, stripping reserved internal state.",
     category: "trigger",
     inputs: [],
-    outputs: [{ name: "main", label: "Main" }],
+    outputs: [{ name: "main", label: "Main" }, errorOutput],
     parameters: [],
   },
   {
@@ -28,7 +34,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     description: "Adds or replaces fields on each item.",
     category: "data",
     inputs: [{ name: "main", label: "Main" }],
-    outputs: [{ name: "main", label: "Main" }],
+    outputs: [{ name: "main", label: "Main" }, errorOutput],
     parameters: [
       {
         key: "values",
@@ -45,10 +51,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     description: "Routes each item to true or false based on a boolean condition.",
     category: "flow",
     inputs: [{ name: "main", label: "Main" }],
-    outputs: [
-      { name: "true", label: "True" },
-      { name: "false", label: "False" },
-    ],
+    outputs: [{ name: "true", label: "True" }, { name: "false", label: "False" }, errorOutput],
     parameters: [
       {
         key: "condition",
@@ -65,7 +68,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     description: "Routes each item to the first matching scalar case port, or default.",
     category: "flow",
     inputs: [{ name: "main", label: "Main" }],
-    outputs: [{ name: "default", label: "Default" }],
+    outputs: [{ name: "default", label: "Default" }, errorOutput],
     dynamicOutputs: {
       label: "Case ports",
       description: "Ports named by the cases list. The first matching case selects its port.",
@@ -118,7 +121,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
         description: "Accepts any number of incoming connections.",
       },
     ],
-    outputs: [{ name: "main", label: "Main" }],
+    outputs: [{ name: "main", label: "Main" }, errorOutput],
     parameters: [],
   },
   {
@@ -145,6 +148,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
         label: "Done",
         description: "Original item plus collected results.",
       },
+      errorOutput,
     ],
     parameters: [
       {
@@ -173,7 +177,7 @@ export const coreNodeCatalog: readonly NodeCatalogEntry[] = [
     description: "Sends an HTTP request and adds the response to the item.",
     category: "network",
     inputs: [{ name: "main", label: "Main" }],
-    outputs: [{ name: "main", label: "Main" }],
+    outputs: [{ name: "main", label: "Main" }, errorOutput],
     parameters: [
       {
         key: "url",

@@ -1,4 +1,5 @@
 import {
+  ERROR_PORT,
   HttpError,
   MAX_HTTP_RESPONSE_BYTES,
   MAX_HTTP_TIMEOUT_MS,
@@ -112,6 +113,11 @@ const switchNode: NodeExecutor = async ({ item, parameters }) => {
     if (!isSwitchPort(port)) {
       throw new Error(
         `Switch node case ${index} port must be a non-empty string without controls.`,
+      );
+    }
+    if (port === ERROR_PORT) {
+      throw new Error(
+        `Switch node case ${index} port "${ERROR_PORT}" is reserved for error routing.`,
       );
     }
     if (value === candidate) {

@@ -1,10 +1,10 @@
 # Architecture overview
 
 Status: Stage 1 in progress. The pure engine, first built-in nodes, bounded
-retries, an HTTP Request node, and a terminal runner are being built. The API,
-editor, and worker are not implemented yet. This document describes the target
-shape and the boundaries those stages must respect. The full proposal is in
-[`research/02-architecture.md`](../../research/02-architecture.md).
+retries, an HTTP Request node, node error policies, and a terminal runner are
+being built. The API, editor, and worker are not implemented yet. This document
+describes the target shape and the boundaries those stages must respect. The full
+proposal is in [`research/02-architecture.md`](../../research/02-architecture.md).
 
 ## Goals
 
@@ -64,8 +64,15 @@ imports. See [`CONSTRAINTS.md`](../../CONSTRAINTS.md).
    visible in the trace. A step that may have performed an external effect must
    use an idempotency key or be marked as non-retryable.
 8. A node instance may set `timeoutMs` to bound each executor attempt. The engine
-   aborts the attempt signal and fails visibly at the deadline; timed-out work is
-   not automatically retried because its effects may be uncertain.
+   aborts the attempt signal and records a readable failure at the deadline;
+   timed-out work is not automatically retried because its effects may be
+   uncertain.
+9. A node instance may set `errorPolicy` to `fail`, `skip`, or `route`. The policy
+   applies to executor failures, retry exhaustion, and timeouts. `fail` stops the
+   run, `skip` drops the item with a skipped trace line, and `route` sends an
+   error item to the fixed `error` output. A run can end `ok` when every failure
+   was handled; the trace still records each failure. See
+   [ADR 0021](../adr/0021-node-error-routes.md).
 
 ## Engine ports
 
@@ -139,8 +146,13 @@ The detailed exit criteria are in
 - API framework: [`docs/adr/0010-api-framework.md`](../adr/0010-api-framework.md).
 - Code sandbox: [`docs/adr/0012-code-sandbox.md`](../adr/0012-code-sandbox.md).
 
-The expression language, Stage 1 execution model, HTTP/retry slice, and node
-timeouts are accepted in [ADR 0011](../adr/0011-expression-language.md),
+The expression language, Stage 1 execution model, HTTP/retry slice, node
+timeouts, Switch, Merge, Loop, and error routes are accepted in
+[ADR 0011](../adr/0011-expression-language.md),
 [ADR 0013](../adr/0013-engine-execution-model.md),
-[ADR 0014](../adr/0014-http-request-and-retries.md), and
-[ADR 0015](../adr/0015-node-execution-timeouts.md).
+[ADR 0014](../adr/0014-http-request-and-retries.md),
+[ADR 0015](../adr/0015-node-execution-timeouts.md),
+[ADR 0016](../adr/0016-switch-node.md),
+[ADR 0019](../adr/0019-merge-node.md),
+[ADR 0020](../adr/0020-loop-node.md), and
+[ADR 0021](../adr/0021-node-error-routes.md).

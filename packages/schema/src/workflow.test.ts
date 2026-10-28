@@ -315,4 +315,34 @@ describe("workflow parsing", () => {
       ).toThrow(SchemaError);
     }
   });
+
+  it("keeps an omitted error policy absent and parses each supported value", () => {
+    const workflow = parseWorkflow({
+      id: "error-policies",
+      name: "Error policies",
+      nodes: [
+        { id: "default", type: "set" },
+        { id: "explicit-fail", type: "set", errorPolicy: "fail" },
+        { id: "skip", type: "set", errorPolicy: "skip" },
+        { id: "route", type: "set", errorPolicy: "route" },
+      ],
+    });
+
+    expect(workflow.nodes[0]).not.toHaveProperty("errorPolicy");
+    expect(workflow.nodes[1]?.errorPolicy).toBe("fail");
+    expect(workflow.nodes[2]?.errorPolicy).toBe("skip");
+    expect(workflow.nodes[3]?.errorPolicy).toBe("route");
+  });
+
+  it("rejects unknown error policies", () => {
+    for (const errorPolicy of ["stop", "continue", "", "ROUTE", 1, null, true, {}]) {
+      expect(() =>
+        parseWorkflow({
+          id: "bad-error-policy",
+          name: "Bad error policy",
+          nodes: [{ id: "node", type: "set", errorPolicy }],
+        }),
+      ).toThrow(SchemaError);
+    }
+  });
 });

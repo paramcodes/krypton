@@ -7,8 +7,9 @@ control, or a clean interface.
 Status: **Stage 1 — pure engine and terminal runner in progress**. The repo has
 the monorepo, quality gates, guardrails, architecture decisions, and agent setup.
 The engine can run a validated workflow from JSON with the first built-in nodes,
-safe whole-field expressions, bounded retries, and an HTTP Request node. The API,
-editor, and worker are later stages.
+safe whole-field expressions, bounded retries, an HTTP Request node, and per-node
+error policies that can fail, skip, or route a failed item. The API, editor, and
+worker are later stages.
 
 ## Why
 
@@ -98,6 +99,7 @@ are enforced. The guardrail scripts have temp-repo regression tests in
 - [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - [`docs/expressions.md`](docs/expressions.md)
 - [`docs/http-requests.md`](docs/http-requests.md)
+- [`docs/error-routes.md`](docs/error-routes.md)
 - [`docs/learn-by-reading/README.md`](docs/learn-by-reading/README.md)
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md)
 - [`docs/adr/`](docs/adr/README.md)
