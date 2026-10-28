@@ -7,7 +7,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Workflow         | A saved graph of nodes and connections that runs as one unit.                                                     |
 | Node             | One step in a workflow, with a typed input and output.                                                            |
 | Node definition  | The code and metadata that implement a node type.                                                                 |
-| Node catalog     | The editor-facing description of a node type's ports and parameter fields.                                        |
+| Node catalog     | The editor-facing description of a node type's output ports and parameter fields.                                 |
 | Append merge     | A fan-in node that passes each incoming item through in queue order without waiting for other branches.           |
 | Loop over items  | A node that runs a connected body once per array element and collects each returned item in `results`.            |
 | Loop state       | The reserved `__krypton` item field that carries iteration position and partial results through the engine.       |
@@ -20,7 +20,8 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Start node       | A node with no incoming connection, where a run begins.                                                           |
 | Step budget      | The maximum number of node executions a run may perform before it fails visibly.                                  |
 | Journal          | The append-only record of run events used for replay, debugging, and recovery.                                    |
-| Port             | An interface the engine depends on for an external effect, such as time, randomness, HTTP, storage, or secrets.   |
+| Port             | An engine port: an interface for an external effect such as time, randomness, HTTP, storage, or secrets.          |
+| Output port      | A node's named output channel, such as main, true, false, or error; the engine follows matching connections.      |
 | HTTP port        | The engine interface for outbound requests and destination policy.                                                |
 | Node timeout     | A per-attempt deadline that aborts a node's signal and fails the attempt if its executor does not finish in time. |
 | Error policy     | A per-node rule for an executor failure: fail the run, skip the item, or route an error item.                     |
@@ -29,7 +30,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Skipped item     | An item dropped by an error policy of `skip`; the trace records it, but it produces no output.                    |
 | Retry policy     | A bounded, per-node rule for retrying failures that a node explicitly marks as retryable.                         |
 | SSRF             | Server-side request forgery: tricking a server into requesting private or otherwise unsafe destinations.          |
-| Simulation       | A deterministic test run that uses fake ports instead of real time, network, or storage.                          |
+| Simulation       | A deterministic test run that uses fake engine ports instead of real time, network, or storage.                   |
 | Expect test      | A readable end-to-end test that runs the engine and snapshots the human-readable trace inline.                    |
 | Property test    | A test that generates many randomized inputs and checks an invariant, shrinking failures to a counterexample.     |
 | Expression       | A whole-field `{{ expression }}` value reference evaluated per item, with no arbitrary code, I/O, or secrets.     |
@@ -47,3 +48,6 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Workflow version | An immutable snapshot of a workflow, so an old run can be explained and replayed.                                 |
 | Execution order  | The deterministic order in which nodes are scheduled for a run.                                                   |
 | Backpressure     | A limit that stops a fast producer from overwhelming a slower consumer, such as a run queue.                      |
+
+"Port" in this glossary means an engine port, not a node's output port. The
+`error` output is engine-owned and used only for routed failures.

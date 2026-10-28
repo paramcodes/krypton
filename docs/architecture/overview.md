@@ -1,10 +1,14 @@
 # Architecture overview
 
-Status: Stage 1 in progress. The pure engine, first built-in nodes, bounded
-retries, an HTTP Request node, node error policies, and a terminal runner are
-being built. The API, editor, and worker are not implemented yet. This document
-describes the target shape and the boundaries those stages must respect. The full
-proposal is in [`research/02-architecture.md`](../../research/02-architecture.md).
+Status: Stage 1 engine code is complete. The Stage 1 teach-back is ready for
+review; Stage 2 persistence and API is next. The pure engine, built-in nodes,
+bounded retries, an HTTP Request node, per-node timeouts, node error policies,
+property tests, and a terminal runner are implemented. The crash-and-resume test
+moves to Stage 2 with persistence. The API, editor, and worker are not
+implemented yet.
+This document describes the target shape and the boundaries those stages must
+respect. The full proposal is in
+[`research/02-architecture.md`](../../research/02-architecture.md).
 
 ## Goals
 

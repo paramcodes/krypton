@@ -1,143 +1,46 @@
-# Tasks: Graph property tests
+# Stage 1 teach-back todos
 
-## Task 1: Add the pinned property-test dependency
+- [x] Write the Stage 1 chapter with the real triage trace.
+- [x] Explain the item queue, start nodes, named ports, and terminal outputs.
+- [x] Explain why the engine uses ports and simulation.
+- [x] Call out that the Stage 1 trace is not the durable journal.
+- [x] Add the chapter to the learning path and docs index.
+- [x] Add a small false-branch experiment that does not edit tracked files.
+- [x] Add "where the code is" links without line numbers.
+- [x] Distinguish output ports from engine ports in the chapter and glossary.
+- [x] Replace the property-test plan and todo with this close-out slice.
+- [x] Update the Stage 1 status wording without claiming the teach-back is reviewed.
+- [x] Run the full gate: format, check, build, coverage, e2e, and deleted-tests.
+- [x] Get an independent explainer review and fix the findings.
+- [ ] Review the diff and open the teach-back PR; do not merge without permission.
 
-**Description:** Add `fast-check` as a dev dependency of `@krypton/engine` without
-changing runtime packages.
+## Gate result (2026-10-28)
 
-**Acceptance criteria:**
+- `bun run check` passed: guardrails, doc links, format, lint, types, and 209 tests.
+- `bun run build` passed.
+- Coverage passed at 96.76% statements, 93.31% branches, 98.73% functions, and
+  96.7% lines.
+- The Playwright smoke test and the deleted-test guard passed.
+- The explainer review reported "ready for human review" after the terminology,
+  start-node, retry-trace, error-port, and final-output fixes.
 
-- [x] `fast-check` is pinned exactly at `4.10.2`.
-- [x] The release is older than two weeks and the lockfile records the package.
-- [x] The dependency is dev-only.
-- [x] The test-only import has a reviewed guardrail exception.
-- [x] ADR 0022 records the decision, exception, and alternatives.
+## Files
 
-**Verification:** `package.json`, `bun.lock`, and ADR 0022 review.
-
-**Files touched:**
-
-- `packages/engine/package.json`
-- `bun.lock`
-- `scripts/guardrails-allowlist.json`
-- `docs/adr/0022-property-tests-with-fast-check.md`
-- `docs/adr/README.md`
-
-**Estimated scope:** Small.
-
-## Task 2: Generate valid graphs and prove the engine never throws
-
-**Description:** Build structurally valid raw workflows from a bounded generator and
-run them through the parser and engine with fake ports.
-
-**Acceptance criteria:**
-
-- [x] The generator creates one to eight unique node IDs.
-- [x] Nodes use known test types and JSON objects for parameters.
-- [x] Connections use existing endpoints and optional named source ports.
-- [x] Parsing and running never throw.
-- [x] Execution uses bounded steps and queue size, fake ports, and a trace assertion.
-
-**Verification:** Targeted property test.
-
-**Files touched:**
-
-- `packages/engine/src/graph.property.test.ts`
-
-**Estimated scope:** Medium.
-
-## Task 3: Reject invalid graphs with clear schema errors
-
-**Description:** Mutate valid workflows into known invalid shapes and assert the
-parser rejects each with a useful error.
-
-**Acceptance criteria:**
-
-- [x] Duplicate IDs, unknown endpoints, empty nodes, and invalid expression versions are covered.
-- [x] Invalid retry, timeout, and error-policy values are covered.
-- [x] Non-JSON parameters and control characters in IDs are covered.
-- [x] Every case throws `SchemaError`.
-- [x] Each mutation kind gets its own 100-run property.
-- [x] Every error has the expected `$`-rooted field path and message.
-
-**Verification:** Targeted property test.
-
-**Files touched:**
-
-- `packages/engine/src/graph.property.test.ts`
-
-**Estimated scope:** Small.
-
-## Task 4: Update documentation and the learning path
-
-**Description:** Make the dependency decision, property-test scope, and vocabulary
-discoverable.
-
-**Acceptance criteria:**
-
-- [x] ADR 0022 and the ADR index describe the decision.
-- [x] The test-strategy ADR points to the property-test decision.
-- [x] The glossary defines a property test.
-- [x] The learn-by-reading path includes the new test.
-- [x] This plan and todo replace the merged error-route slice.
-
-**Verification:** Documentation review and the full gate.
-
-**Dependencies:** Tasks 1-3.
-
-**Files touched:**
-
-- `docs/adr/0022-property-tests-with-fast-check.md`
-- `docs/adr/README.md`
-- `docs/adr/0005-test-strategy.md`
-- `docs/GLOSSARY.md`
+- `docs/learn-by-reading/01-how-the-engine-works.md`
 - `docs/learn-by-reading/README.md`
+- `docs/README.md`
+- `README.md`
+- `docs/architecture/overview.md`
+- `docs/GLOSSARY.md`
 - `tasks/plan.md`
 - `tasks/todo.md`
 
-**Estimated scope:** Small.
+## Review checks
 
-## Task 5: Run the full quality gate
-
-**Description:** Prove the slice meets the repository bar.
-
-**Acceptance criteria:**
-
-- [x] `bun run format` leaves the tree clean.
-- [x] The targeted property test passes.
-- [x] `bun run check` passes.
-- [x] `bun run build` passes.
-- [x] `bun run test:coverage` passes.
-- [x] `bun run e2e` passes.
-- [x] `BASE_SHA=main bun run guardrails:deleted-tests` passes.
-
-**Result (2026-10-28):** The targeted property test passed with 12 tests.
-`bun run check` passed with 209 tests, clean guardrails, formatting, lint, and
-typecheck. `bun run build` passed. Coverage passed at 96.76% statements, 93.31%
-branches, 98.73% functions, and 96.7% lines. The Playwright smoke test and the
-deleted-test guard passed.
-
-**Verification:** Paste command output into the review.
-
-**Dependencies:** Tasks 1-4.
-
-**Estimated scope:** Small.
-
-## Task 6: Review and prepare the PR
-
-**Description:** Review the diff and open a PR without merging.
-
-**Acceptance criteria:**
-
-- [x] The diff is small enough for a human to walk through.
-- [x] The review confirms boundaries, tests, docs, and AGPL compatibility.
-- [x] A PR is opened on `stage-1-graph-property-test`.
-- [x] No merge to `main` without explicit permission.
-
-**Verification:** Review findings and PR link: [#11](https://github.com/paramcodes/krypton/pull/11).
-The independent review required field-specific schema assertions; the final test
-asserts the exact path and message for every mutation kind.
-
-**Dependencies:** Task 5.
-
-**Estimated scope:** Small.
+- The CLI trace in the chapter matches the current command output.
+- The chapter says the trace is not the journal and keeps crash-and-resume in
+  Stage 2.
+- The chapter links to ADR 0005, 0013, 0014, 0015, and 0022.
+- The glossary distinguishes a node's output port from an engine port.
+- The false-branch experiment works with a copy of the input file.
+- `bun run check` passes.
