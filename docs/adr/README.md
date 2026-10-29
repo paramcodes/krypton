@@ -54,7 +54,7 @@ Name the evidence or event that should reopen this decision.
 | [0007](0007-containers-and-distribution.md)    | Podman locally, Docker in CI, OCI and compose                 | accepted |
 | [0008](0008-agent-harness.md)                  | OpenCode-only, project-local agents and skills                | accepted |
 | [0009](0009-docs-site.md)                      | Starlight for the documentation site                          | accepted |
-| [0010](0010-api-framework.md)                  | API framework: Hono candidate, Fastify fallback               | proposed |
+| [0010](0010-api-framework.md)                  | API framework: Hono with Fastify as fallback                  | accepted |
 | [0011](0011-expression-language.md)            | Expression language: small safe language before sandboxed JS  | accepted |
 | [0012](0012-code-sandbox.md)                   | Code node sandbox: isolated runtime, not the API process      | proposed |
 | [0013](0013-engine-execution-model.md)         | Engine execution model: injectable nodes over an item queue   | accepted |

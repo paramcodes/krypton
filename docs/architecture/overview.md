@@ -147,11 +147,11 @@ The detailed exit criteria are in
 
 ## Open decisions
 
-- API framework: [`docs/adr/0010-api-framework.md`](../adr/0010-api-framework.md).
 - Code sandbox: [`docs/adr/0012-code-sandbox.md`](../adr/0012-code-sandbox.md).
 
-The expression language, Stage 1 execution model, HTTP/retry slice, node
-timeouts, Switch, Merge, Loop, and error routes are accepted in
+The API framework, expression language, Stage 1 execution model, HTTP/retry
+slice, node timeouts, Switch, Merge, Loop, and error routes are accepted in
+[ADR 0010](../adr/0010-api-framework.md),
 [ADR 0011](../adr/0011-expression-language.md),
 [ADR 0013](../adr/0013-engine-execution-model.md),
 [ADR 0014](../adr/0014-http-request-and-retries.md),
