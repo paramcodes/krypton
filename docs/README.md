@@ -4,6 +4,9 @@ Start here:
 
 - [Architecture overview](architecture/overview.md) — system shape, package
   boundaries, execution flow.
+- [How the engine works](learn-by-reading/01-how-the-engine-works.md) — the
+  Stage 1 teach-back: follow one item through the queue and see why ports and
+  simulation keep the engine testable.
 - [Glossary](GLOSSARY.md) — plain-language definitions.
 - [Expressions](expressions.md) — the safe field syntax and its limits.
 - [HTTP requests](http-requests.md) — the HTTP Request node, retries, and the

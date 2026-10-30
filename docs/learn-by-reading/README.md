@@ -3,6 +3,16 @@
 This path is for someone new to workflow engines and to Krypton. Read in order;
 each step builds on the previous one.
 
+## Stage chapters
+
+Each stage ends with a chapter that ties the working code together. Start with:
+
+1. [How the engine works](01-how-the-engine-works.md) — Stage 1: run the triage
+   workflow, follow one item through the queue, and see why ports and simulation
+   keep the engine testable.
+
+## Reading path
+
 1. [`README.md`](../../README.md) — what the product is and how to run the gate.
 2. [`docs/architecture/overview.md`](../architecture/overview.md) — the system
    shape and the package boundaries.
@@ -62,3 +72,7 @@ editor, and readable execution traces. The CLI,
 [`graph.property.test.ts`](../../packages/engine/src/graph.property.test.ts),
 and the [`catalog`](../../packages/node-sdk/src/catalog.test.ts) tests show the
 current slice.
+
+The Stage 1 close-out chapter is
+[How the engine works](01-how-the-engine-works.md). Stage 2 starts with
+persistence and the API.

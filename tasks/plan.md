@@ -1,73 +1,67 @@
-# Implementation Plan: Graph property tests
+# Implementation Plan: Stage 1 teach-back
 
 ## Overview
 
-Add a property test for the engine's graph boundary. Random structurally valid
-workflows must parse and run without throwing. Random invalid workflows must be
-rejected with a `SchemaError` that names a path and a readable reason.
+Close Stage 1 with a readable chapter that follows one item through the triage
+workflow. The chapter must connect the JSON boundary, the engine queue, named
+ports, the trace, and the simulation tests without pretending that the durable
+journal already exists.
 
-The test uses `fast-check`, pinned as a dev dependency of `@krypton/engine`, and
-the existing fake ports. It complements the expect tests; it does not replace
-them.
+The chapter is a learning document, not a new engine feature. It uses the real CLI
+output and links to the code and ADRs that make the behavior true.
 
 ## Architecture Decisions
 
-- Add `fast-check` at exact version `4.10.2` to `@krypton/engine`; it is a
-  dev-only dependency.
-- Keep the property test in `packages/engine/src/graph.property.test.ts` so it
-  exercises both `parseWorkflow` and `runWorkflow`.
-- Generate valid graphs with unique node IDs, known test node types, bounded
-  nodes/connections, and optional named source ports. Run with bounded steps and
-  queue size so cycles cannot hang the suite.
-- Generate invalid workflows by mutating a valid base: duplicate IDs, unknown
-  connection endpoints, empty nodes, invalid expression versions, invalid
-  retry/timeout/policy values, non-JSON parameters, and control characters.
-- Assert the parser throws `SchemaError` with the expected `$`-rooted field path
-  and message for each mutation. A fast-check failure reports its seed and shrink
-  path.
-- Do not add a runtime generator, a new port, or a new engine behavior.
+- Put the chapter in `docs/learn-by-reading/01-how-the-engine-works.md`, following
+  the repo's chapter shape: what you will see, how it works, why, try it, and
+  where the code is.
+- Use the existing triage example rather than inventing a second workflow. The
+  example already exercises a trigger, Set, IF, a branch, and a terminal node.
+- Be explicit that the Stage 1 trace is not the durable journal. Persistence,
+  replay, and crash-and-resume are Stage 2 or later.
+- Link to files without line numbers so the chapter does not rot.
+- Do not add runtime code, ports, dependencies, or new node behavior.
 
 ## Scope
 
 ### In
 
-- Engine dev dependency and lockfile update.
-- Valid-graph and invalid-graph property tests.
-- ADR 0022, ADR index, test-strategy update, glossary, and learning path.
+- The Stage 1 teach-back chapter.
+- Learning-path and documentation-index links.
+- A glossary distinction between a node's output port and an engine port.
+- A status note that Stage 1 code is complete and the teach-back is ready for
+  review.
 - Task plan and todo replacement.
 
 ### Out
 
-- Crash-and-resume, durable persistence, or Stage 2 work.
-- Expression property tests; the evaluator does not have a stable generator yet.
-- Semantic port-aware graph generation based on the node catalog.
-- Fuzz testing outside the engine/schema graph boundary.
+- Stage 2 schema, API, Postgres, credentials, or worker work.
+- A durable journal implementation.
+- Reopening engine behavior or adding new nodes.
+- A docs site or generated reference.
 
 ## Testing Strategy
 
-- Valid property: 100 generated workflows; parse and run each with fake ports,
-  `maxSteps: 50`, and `maxQueuedItems: 100`; assert a valid status and trace.
-- Invalid properties: one 100-run property per mutation kind; assert
-  `SchemaError`, the expected `$` field path, and the expected message.
-- Deterministic valid graph: a two-node chain must reach `ok`, execute both
-  nodes in order, and return its item.
-- Existing expect tests remain the primary readable coverage.
-- Full gate: `bun run check`, `bun run build`, `bun run test:coverage`,
-  `bun run e2e`, and the deleted-test guard.
+- Run the exact CLI command in the chapter and compare the trace and output.
+- Run the triage expect test and the property test named in the chapter.
+- Run `bun run check` for doc links, formatting, lint, types, and unit tests.
+- Build, coverage, e2e, and the deleted-test guard remain unchanged by this
+  docs-only slice, but the normal gate still runs before the PR.
 
 ## Risks and Mitigations
 
-- **Nondeterministic failures:** fast-check reports the seed; tests use fake
-  clocks and bounded execution.
-- **Slow or exploding graphs:** cap nodes, connections, steps, and queue size.
-- **Generator drift:** keep raw workflow shapes aligned with `parseWorkflow` and
-  use the schema parser as the oracle.
-- **Dependency creep:** pin exactly, keep it dev-only, and record the decision in
-  ADR 0022.
+- **Stale trace:** keep the example output small and say that timings vary; the
+  code links and the inline test snapshot are the durable checks.
+- **Journal confusion:** a dedicated "What is not here yet" section prevents the
+  trace from being mistaken for persisted state.
+- **Over-teaching:** keep the chapter focused on one item's path, then link to the
+  ADRs and glossary for the details.
 
 ## Definition of Done
 
+- The chapter runs the triage workflow and explains every trace line.
+- The chapter has a diagram, design rationale, a small experiment, and exact code
+  links.
+- The learning path and docs index link to the chapter.
 - `bun run check` passes.
-- The deterministic execution test and every mutation-specific property pass.
-- ADR 0022 and the test-strategy docs describe the dependency and scope.
 - The diff is small enough for a human to walk through.

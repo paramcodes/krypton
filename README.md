@@ -4,12 +4,14 @@ Krypton is a self-hosted visual workflow automation app for people who want to
 run automations on their own hardware without giving up observability, version
 control, or a clean interface.
 
-Status: **Stage 1 — pure engine and terminal runner in progress**. The repo has
-the monorepo, quality gates, guardrails, architecture decisions, and agent setup.
-The engine can run a validated workflow from JSON with the first built-in nodes,
-safe whole-field expressions, bounded retries, an HTTP Request node, and per-node
-error policies that can fail, skip, or route a failed item. The API, editor, and
-worker are later stages.
+Status: **Stage 1 — pure engine and terminal runner code complete. The Stage 1
+teach-back is ready for review; Stage 2 persistence and API is next.** The repo
+has the monorepo, quality gates, guardrails, architecture decisions, and agent
+setup. The engine can run a validated workflow from JSON with the built-in nodes,
+safe whole-field expressions, bounded retries, an HTTP Request node, per-node
+timeouts, and per-node error policies that can fail, skip, or route a failed
+item. Property tests cover graph invariants. The crash-and-resume test moves to
+Stage 2 with persistence. The API, editor, and worker are later stages.
 
 ## Why
 
