@@ -133,9 +133,10 @@ and crash-and-resume are Stage 2 or later. The crash-and-resume test planned for
 Stage 2 moves with that persistence work; it is not hiding inside the Stage 1
 engine.
 
-The API, editor, worker, database, and the `Random`, `Secrets`, and `RunStore`
-engine ports are also not implemented. The engine has only the engine ports its
-current consumers need.
+The API routes, editor, worker, durable `RunStore` adapter, and the `Random`,
+`Secrets`, and `RunStore` engine ports are also not implemented. The Postgres
+schema and migrations exist, but nothing writes runs to them yet. The engine has
+only the engine ports its current consumers need.
 
 ## Try it
 

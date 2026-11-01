@@ -3,10 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=../../.env src/db/migrate.ts"
+  },
   "dependencies": {
     "@krypton/engine": "workspace:*",
     "@krypton/node-sdk": "workspace:*",
     "@krypton/nodes-core": "workspace:*",
-    "@krypton/schema": "workspace:*"
+    "@krypton/schema": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "vitest": "5.0.4"
   }
 }

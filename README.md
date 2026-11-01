@@ -4,14 +4,17 @@ Krypton is a self-hosted visual workflow automation app for people who want to
 run automations on their own hardware without giving up observability, version
 control, or a clean interface.
 
-Status: **Stage 1 — pure engine and terminal runner code complete. The Stage 1
-teach-back is ready for review; Stage 2 persistence and API is next.** The repo
-has the monorepo, quality gates, guardrails, architecture decisions, and agent
-setup. The engine can run a validated workflow from JSON with the built-in nodes,
-safe whole-field expressions, bounded retries, an HTTP Request node, per-node
-timeouts, and per-node error policies that can fail, skip, or route a failed
-item. Property tests cover graph invariants. The crash-and-resume test moves to
-Stage 2 with persistence. The API, editor, and worker are later stages.
+Status: **Stage 2 — persistence in progress.** Stage 1's pure engine and terminal
+runner are complete, and the Stage 1 teach-back is merged. Stage 2 has started
+with the Postgres/Drizzle schema, forward-only migrations, and real-database
+integration coverage; the durable `RunStore` adapter and API routes are next. The
+repo has the monorepo, quality gates, guardrails, architecture decisions, and
+agent setup. The engine can run a validated workflow from JSON with the built-in
+nodes, safe whole-field expressions, bounded retries, an HTTP Request node,
+per-node timeouts, and per-node error policies that can fail, skip, or route a
+failed item. Property tests cover graph invariants. The crash-and-resume test
+moves to Stage 2 with persistence. The API routes, editor, and worker are later
+stages; this slice adds the API's persistence layer.
 
 ## Why
 
@@ -40,9 +43,10 @@ bunx playwright install chromium
 bun run e2e
 ```
 
-`bun run check` runs guardrails, formatting, linting, typechecking, and unit
-tests. It should stay under 10 seconds on the current tree. The Playwright
-browser is installed separately because it is a large download.
+`bun run check` runs guardrails, formatting, linting, typechecking, migration
+metadata checks, and unit tests. It should stay under 10 seconds on the current
+tree. The Playwright browser is installed separately because it is a large
+download.
 
 If the project skills are missing:
 
@@ -51,17 +55,38 @@ bun run skills:install
 bun run skills:list
 ```
 
-## Postgres (optional until Stage 2)
+## Postgres
 
 ```sh
 cp .env.example .env
 podman compose up -d postgres
+bun run db:migrate
+podman compose exec postgres createdb -U krypton krypton_test
 podman compose down
 ```
 
 The compose file binds Postgres to `127.0.0.1` and uses a named volume. Change
-the password in `.env` before exposing anything beyond localhost; the example
-value is a placeholder.
+the password in `.env` before exposing anything beyond localhost; keep the
+password and port in `DATABASE_URL` and `TEST_DATABASE_URL` in sync with the
+`POSTGRES_*` values.
+
+The API reads `DATABASE_URL`. The integration suite reads `TEST_DATABASE_URL`,
+requires the database name to end in `_test`, rejects the same host, port, and
+database as `DATABASE_URL`, and removes the `public` and Drizzle bookkeeping
+schemas before applying migrations. It also requires a loopback host unless
+`TEST_DATABASE_ALLOW_REMOTE=true` is set for a disposable remote test database.
+Create a disposable `krypton_test` database before running it:
+
+```sh
+TEST_DATABASE_URL=postgres://krypton:change-me@127.0.0.1:5432/krypton_test \
+  bun run test:integration
+```
+
+Schema changes use `bun run db:generate` and are applied with `bun run db:migrate`;
+`bun run db:check` validates the Drizzle migration metadata. CI runs
+`bun run db:drift`, which regenerates migrations in a temporary directory and
+fails if `schema.ts` and the committed migration files diverge. See
+[ADR 0023](docs/adr/0023-persistence-schema-and-migrations.md).
 
 ## Layout
 
@@ -82,7 +107,12 @@ value is a placeholder.
 ## Quality gates
 
 - `bun run check` — guardrails, dependency boundaries, doc links, format check,
-  lint, types, and unit tests.
+  lint, types, migration metadata check, and unit tests.
+- `bun run db:check` — Drizzle migration metadata validation.
+- `bun run db:drift` — regenerate migrations in a temporary directory and fail if
+  `schema.ts` and committed migrations diverge; CI runs this.
+- `bun run test:integration` — real-Postgres schema and constraint tests; set
+  `TEST_DATABASE_URL` to a disposable `*_test` database.
 - `bun run test:coverage` — unit tests with the engine coverage tripwire.
 - `bun run e2e` — Playwright smoke test; install Chromium first with
   `bunx playwright install chromium`.
@@ -92,9 +122,9 @@ value is a placeholder.
 Package dependency edges, engine purity, skipped tests, `@ts-nocheck`, all type
 assertions except the reviewed `packages/schema/src/brand.ts` boundary, and `any`
 are enforced. The guardrail scripts have temp-repo regression tests in
-`scripts/*.test.ts`. CI runs the coverage tripwire, the deleted-test check, and
-`docker compose config`. See [`CONSTRAINTS.md`](CONSTRAINTS.md) and
-[`docs/adr/`](docs/adr/README.md).
+`scripts/*.test.ts`. CI runs the migration drift check, the integration target,
+the coverage tripwire, the deleted-test check, and `docker compose config`. See
+[`CONSTRAINTS.md`](CONSTRAINTS.md) and [`docs/adr/`](docs/adr/README.md).
 
 ## Docs
 

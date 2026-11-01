@@ -16,6 +16,7 @@
     "coverage/**",
     "test-results/**",
     "playwright-report/**",
-    ".turbo/**"
+    ".turbo/**",
+    "apps/api/drizzle/**"
   ]
 }
