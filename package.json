@@ -10,8 +10,12 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit",
-    "check": "bun run guardrails && bun run format:check && bun run lint && bun run typecheck && bun run test",
+    "check": "bun run guardrails && bun run format:check && bun run lint && bun run typecheck && bun run db:check && bun run test",
     "cli": "node apps/cli/src/main.ts",
+    "db:check": "bun run --cwd apps/api db:check",
+    "db:drift": "bun scripts/check-drizzle-drift.ts",
+    "db:generate": "bun run --cwd apps/api db:generate",
+    "db:migrate": "bun run --cwd apps/api db:migrate",
     "e2e": "playwright test",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
@@ -24,12 +28,14 @@
     "skills:list": "skills list",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "bun check --no-script"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
     "@types/node": "26.6.5",
     "@vitest/coverage-v8": "5.0.4",
+    "drizzle-orm": "0.45.4",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
     "skills": "1.7.2",

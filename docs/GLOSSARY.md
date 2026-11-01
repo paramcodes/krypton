@@ -19,7 +19,7 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Trace            | The readable record of a run returned by the engine; not yet the durable journal.                                 |
 | Start node       | A node with no incoming connection, where a run begins.                                                           |
 | Step budget      | The maximum number of node executions a run may perform before it fails visibly.                                  |
-| Journal          | The append-only record of run events used for replay, debugging, and recovery.                                    |
+| Journal          | The append-only-by-convention record of node attempts used for replay, debugging, and recovery.                   |
 | Port             | An engine port: an interface for an external effect such as time, randomness, HTTP, storage, or secrets.          |
 | Output port      | A node's named output channel, such as main, true, false, or error; the engine follows matching connections.      |
 | HTTP port        | The engine interface for outbound requests and destination policy.                                                |
@@ -43,9 +43,11 @@ Plain-language definitions for terms used in the code, docs, and reviews.
 | Curation         | A hand-written, reviewed set of nodes, not an open marketplace.                                                   |
 | Pin data         | Saved test data for a node so a workflow can be tested without live systems.                                      |
 | Idempotency      | The property that retrying an operation does not duplicate its effect.                                            |
+| Migration        | A forward-only SQL change applied in order; an applied migration is never edited or renamed.                      |
+| Expand/contract  | A migration pattern that adds a compatible shape first, switches readers, then removes the old shape later.       |
 | SSE              | Server-Sent Events, used to stream run updates from the API to the editor.                                        |
 | OCI image        | The container image format used by both Podman and Docker.                                                        |
-| Workflow version | An immutable snapshot of a workflow, so an old run can be explained and replayed.                                 |
+| Workflow version | A snapshot of a workflow, treated as immutable so an old run can be explained and replayed.                       |
 | Execution order  | The deterministic order in which nodes are scheduled for a run.                                                   |
 | Backpressure     | A limit that stops a fast producer from overwhelming a slower consumer, such as a run queue.                      |
 

@@ -18,8 +18,15 @@ workflow tool.
 
 ## Commands
 
-- `bun run check` — the fast gate: guardrails, format, lint, types, unit tests.
+- `bun run check` — the fast gate: guardrails, format, lint, types, migration
+  metadata, unit tests.
 - `bun run test` / `bun run test:coverage` — unit tests / coverage tripwire.
+- `bun run test:integration` — real-Postgres schema tests; set
+  `TEST_DATABASE_URL` to a disposable `*_test` database.
+- `bun run db:check` / `bun run db:generate` / `bun run db:migrate` — validate
+  migration metadata / generate a migration / apply migrations.
+- `bun run db:drift` — regenerate migrations in a temporary directory and fail
+  if schema and committed migrations diverge; CI runs it.
 - `bun run cli -- run <workflow.json> [--input <input.json>]` — run a workflow
   with the built-in nodes in the terminal.
 - `bun run e2e` — Playwright smoke test (install Chromium first).

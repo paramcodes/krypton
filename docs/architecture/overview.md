@@ -1,11 +1,12 @@
 # Architecture overview
 
-Status: Stage 1 engine code is complete. The Stage 1 teach-back is ready for
-review; Stage 2 persistence and API is next. The pure engine, built-in nodes,
-bounded retries, an HTTP Request node, per-node timeouts, node error policies,
-property tests, and a terminal runner are implemented. The crash-and-resume test
-moves to Stage 2 with persistence. The API, editor, and worker are not
-implemented yet.
+Status: Stage 1 engine code is complete and its teach-back is merged. Stage 2
+persistence is in progress: the Postgres/Drizzle schema, migration policy, and
+real-database integration target exist. The durable `RunStore` adapter and API
+routes are next. The pure engine, built-in nodes, bounded retries, an HTTP Request
+node, per-node timeouts, node error policies, property tests, and a terminal
+runner are implemented. The crash-and-resume test moves to Stage 2 with
+persistence. The API, editor, and worker are not implemented yet.
 This document describes the target shape and the boundaries those stages must
 respect. The full proposal is in
 [`research/02-architecture.md`](../../research/02-architecture.md).
@@ -53,7 +54,7 @@ imports. See [`CONSTRAINTS.md`](../../CONSTRAINTS.md).
 ## Execution flow
 
 1. The editor saves a workflow. The API validates it against the schema and
-   stores an immutable workflow version.
+   stores a workflow version snapshot.
 2. A trigger creates an execution row. The API returns an execution ID.
 3. The worker claims a queued execution with a lease. A crashed worker loses the
    lease and another worker can resume from the journal.
@@ -110,14 +111,15 @@ limit. The generic per-node deadline and HTTP request timeout are separate; see
 
 - `users`, `sessions` — single admin plus optional invited users.
 - `workflows` — mutable metadata and the current version pointer.
-- `workflow_versions` — immutable graph snapshots.
+- `workflow_versions` — graph snapshots, immutable by API convention.
 - `executions` — run status, timestamps, trigger, and lease owner.
-- `execution_journal` — append-only events and step results.
+- `execution_journal` — append-only-by-convention node-attempt results and timings.
 - `credentials` — encrypted secrets and metadata, never returned in plaintext.
 - `triggers` — manual, schedule, and webhook registrations.
 - `settings` — instance configuration.
 
-The exact SQL, indexes, and migration tool are decided in Stage 2.
+The Stage 2 schema, indexes, and migration policy are recorded in
+[ADR 0023](../adr/0023-persistence-schema-and-migrations.md).
 
 ## Stage map
 
@@ -150,7 +152,8 @@ The detailed exit criteria are in
 - Code sandbox: [`docs/adr/0012-code-sandbox.md`](../adr/0012-code-sandbox.md).
 
 The API framework, expression language, Stage 1 execution model, HTTP/retry
-slice, node timeouts, Switch, Merge, Loop, and error routes are accepted in
+slice, node timeouts, Switch, Merge, Loop, error routes, and persistence schema
+are accepted in
 [ADR 0010](../adr/0010-api-framework.md),
 [ADR 0011](../adr/0011-expression-language.md),
 [ADR 0013](../adr/0013-engine-execution-model.md),
@@ -158,5 +161,6 @@ slice, node timeouts, Switch, Merge, Loop, and error routes are accepted in
 [ADR 0015](../adr/0015-node-execution-timeouts.md),
 [ADR 0016](../adr/0016-switch-node.md),
 [ADR 0019](../adr/0019-merge-node.md),
-[ADR 0020](../adr/0020-loop-node.md), and
-[ADR 0021](../adr/0021-node-error-routes.md).
+[ADR 0020](../adr/0020-loop-node.md),
+[ADR 0021](../adr/0021-node-error-routes.md), and
+[ADR 0023](../adr/0023-persistence-schema-and-migrations.md).

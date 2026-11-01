@@ -18,8 +18,9 @@ engine purity, types, tests, and formatting without a large ESLint plugin graph.
    assertion loss.
 2. `oxfmt --check .`
 3. `oxlint .`
-4. `tsc --noEmit`
-5. `vitest run`
+4. `bun run typecheck`
+5. `bun run db:check`
+6. `vitest run`
 
 Tooling is pinned: Oxlint 1.87.0, Oxfmt 0.72.0, TypeScript 7.0.2, Vitest 5.0.4,
 Playwright 1.64.0. There is no ESLint or Prettier in the repo.
@@ -84,8 +85,9 @@ packages imported `vitest` without declaring it.
 a forbidden package edge, a pure-package import, an engine timer/process/DOM
 access, `@ts-nocheck`, a chained skipped test, a deleted test, a test renamed out
 of the suite, a same-suite rename that loses an assertion, a broken link, and a
-link that escapes the root. CI runs the coverage tripwire and validates the
-compose file; the fast gate stays under ten seconds.
+link that escapes the root. CI runs the migration drift check, the integration
+target, the coverage tripwire, and validates the compose file; the fast gate
+stays under ten seconds.
 
 ## Revisit when
 
