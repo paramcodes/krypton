@@ -12,7 +12,8 @@
 - [x] Document the database setup and the Bun isolated-linker workaround.
 - [x] Add the Postgres service and integration target to CI.
 - [x] Run the full gate, build, coverage, e2e, and deleted-test guard.
-- [ ] Review the diff and open the persistence PR; do not merge without approval.
+- [x] Review the diff and open the persistence PR (#14); do not merge without
+      approval.
 
 ## Follow-on slices
 
